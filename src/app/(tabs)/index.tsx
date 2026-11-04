@@ -1,0 +1,1616 @@
+// // import { StyleSheet, Text, View } from "react-native";
+// // import { useTheme } from "../context/ThemeContext"; // Theme context එක ඉම්පෝට් කරගන්න
+
+// // export default function HomeScreen() {
+// //   const { colors } = useTheme(); // තීම් එකට අදාළ පාට ටික මෙතැනින් ගන්නවා
+
+// //   return (
+// //     <View style={[styles.container, { backgroundColor: colors.background }]}>
+// //       <Text style={[styles.text, { color: colors.text }]}>
+// //         මුල් පිටුවට සාදරයෙන් පිළිගනිමු! 🚀
+// //       </Text>
+// //     </View>
+// //   );
+// // }
+
+// // const styles = StyleSheet.create({
+// //   container: {
+// //     flex: 1,
+// //     justifyContent: "center",
+// //     alignItems: "center",
+// //   },
+// //   text: {
+// //     fontSize: 18,
+// //     fontWeight: "bold",
+// //   },
+// // });
+
+// import { Ionicons } from "@expo/vector-icons";
+// import { useNavigation } from "expo-router";
+// import * as SQLite from "expo-sqlite";
+// import { useEffect, useState } from "react";
+// import {
+//   Alert,
+//   FlatList,
+//   Image,
+//   StyleSheet,
+//   Text,
+//   TouchableOpacity,
+//   View,
+// } from "react-native";
+// import { useTheme } from "../context/ThemeContext";
+
+// // Open SQLite Database
+// const db = SQLite.openDatabaseSync("flashcards.db");
+
+// export default function HomeScreen() {
+//   const { colors } = useTheme();
+//   const [cards, setCards] = useState<any[]>([]);
+//   const navigation = useNavigation();
+
+//   // ඩේටාබේස් එකෙන් කාඩ්ස් ලබා ගැනීම (Fetch Cards)
+//   const fetchCards = async () => {
+//     try {
+//       const allCards = await db.getAllAsync(
+//         "SELECT * FROM flashcards ORDER BY id DESC;",
+//       );
+//       setCards(allCards);
+//     } catch (error) {
+//       console.log("Error fetching cards:", error);
+//     }
+//   };
+
+//   // Safe Focus Listener: ස්ක්‍රීන් එකට එන සෑම අවස්ථාවකම ඩේටා අලුත් කර ගැනීම
+//   useEffect(() => {
+//     fetchCards(); // Initial fetch on mount
+
+//     if (navigation) {
+//       const unsubscribe = navigation.addListener("focus", () => {
+//         fetchCards();
+//       });
+//       return unsubscribe;
+//     }
+//   }, [navigation]);
+
+//   // කාඩ් එකක් මකා දැමීම (Delete Card)
+//   const handleDeleteCard = async (id: number) => {
+//     Alert.alert(
+//       "කාඩ් එක මකා දමන්නද?",
+//       "මෙම ෆ්ලෑෂ් කාඩ් එක ඉවත් කිරීමට අවශ්‍ය බව විශ්වාස ද?",
+//       [
+//         { text: "නැත", style: "cancel" },
+//         {
+//           text: "ඔව්, ඉවත් කරන්න",
+//           style: "destructive",
+//           onPress: async () => {
+//             try {
+//               await db.runAsync("DELETE FROM flashcards WHERE id = ?;", [id]);
+//               fetchCards(); // Refresh list
+//             } catch (error) {
+//               console.log("Error deleting card:", error);
+//             }
+//           },
+//         },
+//       ],
+//     );
+//   };
+
+//   // අන්තර්ගතය පෙන්වීමට උදව් වන හෙල්පර් ෆන්ක්ෂන් එක (Text, Image or Voice)
+//   const renderContent = (type: string, content: string) => {
+//     if (type === "text") {
+//       return (
+//         <Text style={[styles.cardContentText, { color: colors.text }]}>
+//           {content}
+//         </Text>
+//       );
+//     } else if (type === "image") {
+//       return (
+//         <View style={styles.imagePreviewWrapper}>
+//           {content ? (
+//             <Image source={{ uri: content }} style={styles.contentImage} />
+//           ) : (
+//             <Text style={{ color: colors.tint, fontSize: 12 }}>
+//               පින්තූරයක් නැත
+//             </Text>
+//           )}
+//         </View>
+//       );
+//     } else if (type === "voice") {
+//       return (
+//         <View style={styles.voiceIndicator}>
+//           <Ionicons name="mic" size={14} color={colors.primary} />
+//           <Text style={[styles.voiceText, { color: colors.primary }]}>
+//             පටිගත කළ හඬක් ඇත (Voice)
+//           </Text>
+//         </View>
+//       );
+//     }
+//     return null;
+//   };
+
+//   return (
+//     <View style={[styles.container, { backgroundColor: colors.background }]}>
+//       <Text style={[styles.headerTitle, { color: colors.text }]}>
+//         මගේ ෆ්ලෑෂ් කාඩ් ලැයිස්තුව 📚
+//       </Text>
+
+//       {cards.length === 0 ? (
+//         <View style={styles.emptyContainer}>
+//           <Ionicons name="albums-outline" size={60} color={colors.tint} />
+//           <Text style={[styles.emptyText, { color: colors.tint }]}>
+//             තවම ෆ්ලෑෂ් කාඩ් එකතු කර නැත.
+//           </Text>
+//           <Text style={[styles.emptySubText, { color: colors.tint }]}>
+//             නව කාඩ් එකක් එකතු කිරීමට Add Card ස්ක්‍රීන් එකට යන්න!
+//           </Text>
+//         </View>
+//       ) : (
+//         <FlatList
+//           data={cards}
+//           keyExtractor={(item) => item.id.toString()}
+//           contentContainerStyle={styles.listContainer}
+//           showsVerticalScrollIndicator={false}
+//           renderItem={({ item }) => (
+//             <View
+//               style={[
+//                 styles.cardItem,
+//                 {
+//                   backgroundColor: colors.cardBackground,
+//                   borderColor: colors.tint + "30",
+//                 },
+//               ]}
+//             >
+//               {/* Card Header: Subject, Lesson & Delete Button */}
+//               <View style={styles.cardHeader}>
+//                 <View style={styles.badgeRow}>
+//                   <View
+//                     style={[
+//                       styles.subjectBadge,
+//                       { backgroundColor: colors.primary + "20" },
+//                     ]}
+//                   >
+//                     <Text
+//                       style={[
+//                         styles.subjectBadgeText,
+//                         { color: colors.primary },
+//                       ]}
+//                     >
+//                       {item.subject}
+//                     </Text>
+//                   </View>
+//                   <View
+//                     style={[
+//                       styles.lessonBadge,
+//                       { backgroundColor: colors.tint + "20" },
+//                     ]}
+//                   >
+//                     <Text
+//                       style={[styles.lessonBadgeText, { color: colors.text }]}
+//                     >
+//                       {item.lesson}
+//                     </Text>
+//                   </View>
+//                 </View>
+
+//                 <TouchableOpacity
+//                   onPress={() => handleDeleteCard(item.id)}
+//                   style={styles.deleteButton}
+//                 >
+//                   <Ionicons name="trash-outline" size={18} color="#ef4444" />
+//                 </TouchableOpacity>
+//               </View>
+
+//               {/* Question Section */}
+//               <View style={styles.sectionBox}>
+//                 <Text style={styles.sectionLabel}>ප්‍රශ්නය:</Text>
+//                 {renderContent(item.questionType, item.questionContent)}
+//               </View>
+
+//               <View
+//                 style={[
+//                   styles.divider,
+//                   { backgroundColor: colors.tint + "20" },
+//                 ]}
+//               />
+
+//               {/* Answer Section */}
+//               <View style={styles.sectionBox}>
+//                 <Text style={styles.sectionLabel}>පිළිතුර:</Text>
+//                 {renderContent(item.answerType, item.answerContent)}
+//               </View>
+
+//               {/* Reminder Footer if Enabled */}
+//               {item.reminderEnabled === 1 && (
+//                 <View
+//                   style={[
+//                     styles.reminderFooter,
+//                     { backgroundColor: colors.primary + "10" },
+//                   ]}
+//                 >
+//                   <Ionicons
+//                     name="notifications-outline"
+//                     size={13}
+//                     color={colors.primary}
+//                   />
+//                   <Text
+//                     style={[styles.reminderText, { color: colors.primary }]}
+//                   >
+//                     මතක් කිරීම:{" "}
+//                     {item.reminderDays === "3 days"
+//                       ? "දින 3යි"
+//                       : item.reminderDays === "7 days"
+//                         ? "දින 7යි"
+//                         : item.reminderDays === "14 days"
+//                           ? "දින 14යි"
+//                           : "මාස 1යි"}
+//                   </Text>
+//                 </View>
+//               )}
+//             </View>
+//           )}
+//         />
+//       )}
+//     </View>
+//   );
+// }
+
+// const styles = StyleSheet.create({
+//   container: {
+//     flex: 1,
+//     paddingHorizontal: 16,
+//     paddingTop: 50,
+//   },
+//   headerTitle: {
+//     fontSize: 20,
+//     fontWeight: "bold",
+//     marginBottom: 16,
+//     textAlign: "center",
+//   },
+//   listContainer: {
+//     paddingBottom: 30,
+//   },
+//   emptyContainer: {
+//     flex: 1,
+//     justifyContent: "center",
+//     alignItems: "center",
+//     paddingBottom: 50,
+//   },
+//   emptyText: {
+//     fontSize: 16,
+//     fontWeight: "bold",
+//     marginTop: 12,
+//   },
+//   emptySubText: {
+//     fontSize: 12,
+//     textAlign: "center",
+//     marginTop: 4,
+//     paddingHorizontal: 30,
+//   },
+//   cardItem: {
+//     borderRadius: 14,
+//     padding: 14,
+//     marginBottom: 14,
+//     borderWidth: 1,
+//     elevation: 3,
+//     shadowColor: "#000",
+//     shadowOffset: { width: 0, height: 2 },
+//     shadowOpacity: 0.08,
+//     shadowRadius: 6,
+//   },
+//   cardHeader: {
+//     flexDirection: "row",
+//     justifyContent: "space-between",
+//     alignItems: "center",
+//     marginBottom: 10,
+//   },
+//   badgeRow: {
+//     flexDirection: "row",
+//     gap: 6,
+//     flexWrap: "wrap",
+//     flex: 1,
+//     marginRight: 8,
+//   },
+//   subjectBadge: {
+//     paddingHorizontal: 8,
+//     paddingVertical: 3,
+//     borderRadius: 6,
+//   },
+//   subjectBadgeText: {
+//     fontSize: 11,
+//     fontWeight: "bold",
+//   },
+//   lessonBadge: {
+//     paddingHorizontal: 8,
+//     paddingVertical: 3,
+//     borderRadius: 6,
+//   },
+//   lessonBadgeText: {
+//     fontSize: 11,
+//     fontWeight: "600",
+//   },
+//   deleteButton: {
+//     padding: 4,
+//   },
+//   sectionBox: {
+//     marginVertical: 4,
+//   },
+//   sectionLabel: {
+//     fontSize: 11,
+//     fontWeight: "700",
+//     color: "#9ca3af",
+//     marginBottom: 2,
+//   },
+//   cardContentText: {
+//     fontSize: 14,
+//     fontWeight: "500",
+//   },
+//   imagePreviewWrapper: {
+//     height: 100,
+//     borderRadius: 8,
+//     overflow: "hidden",
+//     justifyContent: "center",
+//     alignItems: "center",
+//     backgroundColor: "#f3f4f6",
+//     marginTop: 2,
+//   },
+//   contentImage: {
+//     width: "100%",
+//     height: "100%",
+//     resizeMode: "cover",
+//   },
+//   voiceIndicator: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     gap: 6,
+//     marginTop: 2,
+//   },
+//   voiceText: {
+//     fontSize: 12,
+//     fontWeight: "600",
+//   },
+//   divider: {
+//     height: 1,
+//     marginVertical: 8,
+//   },
+//   reminderFooter: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     gap: 5,
+//     marginTop: 10,
+//     paddingHorizontal: 8,
+//     paddingVertical: 4,
+//     borderRadius: 6,
+//     alignSelf: "flex-start",
+//   },
+//   reminderText: {
+//     fontSize: 10,
+//     fontWeight: "600",
+//   },
+// });
+
+// import { Ionicons } from "@expo/vector-icons";
+// import { useNavigation, useRouter } from "expo-router";
+// import * as SQLite from "expo-sqlite";
+// import { useEffect, useState } from "react";
+// import {
+//   Alert,
+//   FlatList,
+//   Image,
+//   StyleSheet,
+//   Text,
+//   TouchableOpacity,
+//   View,
+// } from "react-native";
+// import { useTheme } from "../../context/ThemeContext";
+
+// const db = SQLite.openDatabaseSync("flashcards.db");
+
+// export default function HomeScreen() {
+//   const { colors } = useTheme();
+//   const [cards, setCards] = useState<any[]>([]);
+//   const navigation = useNavigation();
+//   const router = useRouter();
+
+//   const fetchCards = async () => {
+//     try {
+//       const allCards = await db.getAllAsync(
+//         "SELECT * FROM flashcards ORDER BY id DESC;",
+//       );
+//       setCards(allCards);
+//     } catch (error) {
+//       console.log("Error fetching cards:", error);
+//     }
+//   };
+
+//   useEffect(() => {
+//     fetchCards();
+//     if (navigation) {
+//       const unsubscribe = navigation.addListener("focus", () => {
+//         fetchCards();
+//       });
+//       return unsubscribe;
+//     }
+//   }, [navigation]);
+
+//   const handleDeleteCard = async (id: number) => {
+//     Alert.alert(
+//       "කාඩ් එක මකා දමන්නද?",
+//       "මෙම ෆ්ලෑෂ් කාඩ් එක ඉවත් කිරීමට අවශ්‍ය බව විශ්වාස ද?",
+//       [
+//         { text: "නැත", style: "cancel" },
+//         {
+//           text: "ඔව්, ඉවත් කරන්න",
+//           style: "destructive",
+//           onPress: async () => {
+//             try {
+//               await db.runAsync("DELETE FROM flashcards WHERE id = ?;", [id]);
+//               fetchCards();
+//             } catch (error) {
+//               console.log("Error deleting card:", error);
+//             }
+//           },
+//         },
+//       ],
+//     );
+//   };
+
+//   const renderContent = (type: string, content: string) => {
+//     if (type === "text") {
+//       return (
+//         <Text style={[styles.cardContentText, { color: colors.text }]}>
+//           {content}
+//         </Text>
+//       );
+//     } else if (type === "image") {
+//       return (
+//         <View style={styles.imagePreviewWrapper}>
+//           {content ? (
+//             <Image source={{ uri: content }} style={styles.contentImage} />
+//           ) : (
+//             <Text style={{ color: colors.tint, fontSize: 12 }}>
+//               පින්තූරයක් නැත
+//             </Text>
+//           )}
+//         </View>
+//       );
+//     } else if (type === "voice") {
+//       return (
+//         <View style={styles.voiceIndicator}>
+//           <Ionicons name="mic" size={14} color={colors.primary} />
+//           <Text style={[styles.voiceText, { color: colors.primary }]}>
+//             පටිගත කළ හඬක් ඇත (Voice)
+//           </Text>
+//         </View>
+//       );
+//     }
+//     return null;
+//   };
+
+//   return (
+//     <View style={[styles.container, { backgroundColor: colors.background }]}>
+//       <Text style={[styles.headerTitle, { color: colors.text }]}>
+//         මගේ ෆ්ලෑෂ් කාඩ් ලැයිස්තුව 📚
+//       </Text>
+
+//       {cards.length === 0 ? (
+//         <View style={styles.emptyContainer}>
+//           <Ionicons name="albums-outline" size={60} color={colors.tint} />
+//           <Text style={[styles.emptyText, { color: colors.tint }]}>
+//             තවම ෆ්ලෑෂ් කාඩ් එකතු කර නැත.
+//           </Text>
+//           <Text style={[styles.emptySubText, { color: colors.tint }]}>
+//             නව කාඩ් එකක් එකතු කිරීමට Add Card ස්ක්‍රීන් එකට යන්න!
+//           </Text>
+//         </View>
+//       ) : (
+//         <FlatList
+//           data={cards}
+//           keyExtractor={(item) => item.id.toString()}
+//           contentContainerStyle={styles.listContainer}
+//           showsVerticalScrollIndicator={false}
+//           renderItem={({ item }) => (
+//             // <TouchableOpacity
+//             //   activeOpacity={0.9}
+//             //   onPress={() => router.push(`/card-detail?id=${item.id}`)}
+//             //   style={[
+//             //     styles.cardItem,
+//             //     {
+//             //       backgroundColor: colors.cardBackground,
+//             //       borderColor: colors.tint + "30",
+//             //     },
+//             //   ]}
+//             // >
+//             <TouchableOpacity
+//               activeOpacity={0.9}
+//               onPress={() =>
+//                 router.push({
+//                   pathname: "/card-detail",
+//                   params: { id: item.id },
+//                 })
+//               }
+//               style={[
+//                 styles.cardItem,
+//                 {
+//                   backgroundColor: colors.cardBackground,
+//                   borderColor: colors.tint + "30",
+//                 },
+//               ]}
+//             >
+//               {/* Card Header */}
+//               <View style={styles.cardHeader}>
+//                 <View style={styles.badgeRow}>
+//                   <View
+//                     style={[
+//                       styles.subjectBadge,
+//                       { backgroundColor: colors.primary + "20" },
+//                     ]}
+//                   >
+//                     <Text
+//                       style={[styles.subjectBadgeText, { color: colors.text }]}
+//                     >
+//                       {item.subject}
+//                     </Text>
+//                   </View>
+//                   <View
+//                     style={[
+//                       styles.lessonBadge,
+//                       { backgroundColor: colors.tint + "20" },
+//                     ]}
+//                   >
+//                     <Text
+//                       style={[styles.lessonBadgeText, { color: colors.text }]}
+//                     >
+//                       {item.lesson}
+//                     </Text>
+//                   </View>
+//                 </View>
+
+//                 <TouchableOpacity
+//                   onPress={(e) => {
+//                     e.stopPropagation();
+//                     handleDeleteCard(item.id);
+//                   }}
+//                   style={styles.deleteButton}
+//                 >
+//                   <Ionicons name="trash-outline" size={18} color="#ef4444" />
+//                 </TouchableOpacity>
+//               </View>
+
+//               {/* Question Section */}
+//               <View style={styles.sectionBox}>
+//                 <Text style={[styles.sectionLabel, { color: colors.text }]}>
+//                   ප්‍රශ්නය:
+//                 </Text>
+//                 {renderContent(item.questionType, item.questionContent)}
+//               </View>
+
+//               <View
+//                 style={[
+//                   styles.divider,
+//                   { backgroundColor: colors.tint + "20" },
+//                 ]}
+//               />
+
+//               {/* Answer Section */}
+//               <View style={styles.sectionBox}>
+//                 <Text style={[styles.sectionLabel, { color: colors.text }]}>
+//                   පිළිතුර:
+//                 </Text>
+//                 {renderContent(item.answerType, item.answerContent)}
+//               </View>
+
+//               {/* Reminder Footer */}
+//               {item.reminderEnabled === 1 && (
+//                 <View
+//                   style={[
+//                     styles.reminderFooter,
+//                     { backgroundColor: colors.primary + "10" },
+//                   ]}
+//                 >
+//                   <Ionicons
+//                     name="notifications-outline"
+//                     size={13}
+//                     color={colors.primary}
+//                   />
+//                   <Text
+//                     style={[styles.reminderText, { color: colors.primary }]}
+//                   >
+//                     මතක් කිරීම:{" "}
+//                     {item.reminderDays === "3 days"
+//                       ? "දින 3යි"
+//                       : item.reminderDays === "7 days"
+//                         ? "දින 7යි"
+//                         : item.reminderDays === "14 days"
+//                           ? "දින 14යි"
+//                           : "මාස 1යි"}
+//                   </Text>
+//                 </View>
+//               )}
+//             </TouchableOpacity>
+//           )}
+//         />
+//       )}
+//     </View>
+//   );
+// }
+
+// const styles = StyleSheet.create({
+//   container: { flex: 1, paddingHorizontal: 16, paddingTop: 50 },
+//   headerTitle: {
+//     fontSize: 20,
+//     fontWeight: "bold",
+//     marginBottom: 16,
+//     textAlign: "center",
+//   },
+//   listContainer: { paddingBottom: 30 },
+//   emptyContainer: {
+//     flex: 1,
+//     justifyContent: "center",
+//     alignItems: "center",
+//     paddingBottom: 50,
+//   },
+//   emptyText: { fontSize: 16, fontWeight: "bold", marginTop: 12 },
+//   emptySubText: {
+//     fontSize: 12,
+//     textAlign: "center",
+//     marginTop: 4,
+//     paddingHorizontal: 30,
+//   },
+//   cardItem: {
+//     borderRadius: 14,
+//     padding: 14,
+//     marginBottom: 14,
+//     borderWidth: 1,
+//     elevation: 3,
+//   },
+//   cardHeader: {
+//     flexDirection: "row",
+//     justifyContent: "space-between",
+//     alignItems: "center",
+//     marginBottom: 10,
+//   },
+//   badgeRow: {
+//     flexDirection: "row",
+//     gap: 6,
+//     flexWrap: "wrap",
+//     flex: 1,
+//     marginRight: 8,
+//   },
+//   subjectBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+//   subjectBadgeText: { fontSize: 11, fontWeight: "bold" },
+//   lessonBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+//   lessonBadgeText: { fontSize: 11, fontWeight: "600" },
+//   deleteButton: { padding: 4 },
+//   sectionBox: { marginVertical: 4 },
+//   sectionLabel: { fontSize: 12, fontWeight: "700", marginBottom: 2 },
+//   cardContentText: { fontSize: 14, fontWeight: "500" },
+//   imagePreviewWrapper: {
+//     height: 100,
+//     borderRadius: 8,
+//     overflow: "hidden",
+//     justifyContent: "center",
+//     alignItems: "center",
+//     backgroundColor: "#f3f4f6",
+//     marginTop: 2,
+//   },
+//   contentImage: { width: "100%", height: "100%", resizeMode: "cover" },
+//   voiceIndicator: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     gap: 6,
+//     marginTop: 2,
+//   },
+//   voiceText: { fontSize: 12, fontWeight: "600" },
+//   divider: { height: 1, marginVertical: 8 },
+//   reminderFooter: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     gap: 5,
+//     marginTop: 10,
+//     paddingHorizontal: 8,
+//     paddingVertical: 4,
+//     borderRadius: 6,
+//     alignSelf: "flex-start",
+//   },
+//   reminderText: { fontSize: 10, fontWeight: "600" },
+// });
+
+// import { Ionicons } from "@expo/vector-icons";
+// import { useNavigation, useRouter } from "expo-router";
+// import * as SQLite from "expo-sqlite";
+// import { useEffect, useState } from "react";
+// import {
+//   Alert,
+//   FlatList,
+//   Image,
+//   StyleSheet,
+//   Text,
+//   TouchableOpacity,
+//   View,
+// } from "react-native";
+// import { useTheme } from "../../context/ThemeContext";
+
+// const db = SQLite.openDatabaseSync("flashcards.db");
+
+// export default function HomeScreen() {
+//   const { colors } = useTheme();
+//   const [cards, setCards] = useState<any[]>([]);
+//   const navigation = useNavigation();
+//   const router = useRouter();
+
+//   // JOIN query එක මඟින් subject සහ lesson වල නම ලබා ගැනීම
+//   const fetchCards = async () => {
+//     try {
+//       const allCards: any = await db.getAllAsync(`
+//         SELECT
+//           f.*,
+//           s.name as subject_name,
+//           l.name as lesson_name
+//         FROM flashcards f
+//         LEFT JOIN subjects s ON f.subject_id = s.id
+//         LEFT JOIN lessons l ON f.lesson_id = l.id
+//         ORDER BY f.id DESC;
+//       `);
+//       setCards(allCards);
+//     } catch (error) {
+//       console.log("Error fetching cards:", error);
+//     }
+//   };
+
+//   useEffect(() => {
+//     fetchCards();
+//     if (navigation) {
+//       const unsubscribe = navigation.addListener("focus", () => {
+//         fetchCards();
+//       });
+//       return unsubscribe;
+//     }
+//   }, [navigation]);
+
+//   const handleDeleteCard = async (id: number) => {
+//     Alert.alert(
+//       "කාඩ් එක මකා දමන්නද?",
+//       "මෙම ෆ්ලෑෂ් කාඩ් එක ඉවත් කිරීමට අවශ්‍ය බව විශ්වාස ද?",
+//       [
+//         { text: "නැත", style: "cancel" },
+//         {
+//           text: "ඔව්, ඉවත් කරන්න",
+//           style: "destructive",
+//           onPress: async () => {
+//             try {
+//               await db.runAsync("DELETE FROM flashcards WHERE id = ?;", [id]);
+//               fetchCards();
+//             } catch (error) {
+//               console.log("Error deleting card:", error);
+//             }
+//           },
+//         },
+//       ],
+//     );
+//   };
+
+//   const renderContent = (type: string, content: string) => {
+//     if (type === "text") {
+//       return (
+//         <Text style={[styles.cardContentText, { color: colors.text }]}>
+//           {content}
+//         </Text>
+//       );
+//     } else if (type === "image") {
+//       return (
+//         <View style={styles.imagePreviewWrapper}>
+//           {content ? (
+//             <Image source={{ uri: content }} style={styles.contentImage} />
+//           ) : (
+//             <Text style={{ color: colors.tint, fontSize: 12 }}>
+//               පින්තූරයක් නැත
+//             </Text>
+//           )}
+//         </View>
+//       );
+//     } else if (type === "voice") {
+//       return (
+//         <View style={styles.voiceIndicator}>
+//           <Ionicons name="mic" size={14} color={colors.primary} />
+//           <Text style={[styles.voiceText, { color: colors.primary }]}>
+//             පටිගත කළ හඬක් ඇත (Voice)
+//           </Text>
+//         </View>
+//       );
+//     }
+//     return null;
+//   };
+
+//   return (
+//     <View style={[styles.container, { backgroundColor: colors.background }]}>
+//       <Text style={[styles.headerTitle, { color: colors.text }]}>
+//         මගේ ෆ්ලෑෂ් කාඩ් ලැයිස්තුව 📚
+//       </Text>
+
+//       {cards.length === 0 ? (
+//         <View style={styles.emptyContainer}>
+//           <Ionicons name="albums-outline" size={60} color={colors.tint} />
+//           <Text style={[styles.emptyText, { color: colors.tint }]}>
+//             තවම ෆ්ලෑෂ් කාඩ් එකතු කර නැත.
+//           </Text>
+//           <Text style={[styles.emptySubText, { color: colors.tint }]}>
+//             නව කාඩ් එකක් එකතු කිරීමට Add Card ස්ක්‍රීන් එකට යන්න!
+//           </Text>
+//         </View>
+//       ) : (
+//         <FlatList
+//           data={cards}
+//           keyExtractor={(item) => item.id.toString()}
+//           contentContainerStyle={styles.listContainer}
+//           showsVerticalScrollIndicator={false}
+//           renderItem={({ item }) => (
+//             <TouchableOpacity
+//               activeOpacity={0.9}
+//               onPress={() =>
+//                 router.push({
+//                   pathname: "/card-detail",
+//                   params: { id: item.id },
+//                 })
+//               }
+//               style={[
+//                 styles.cardItem,
+//                 {
+//                   backgroundColor: colors.cardBackground,
+//                   borderColor: colors.tint + "30",
+//                 },
+//               ]}
+//             >
+//               {/* Card Header */}
+//               <View style={styles.cardHeader}>
+//                 <View style={styles.badgeRow}>
+//                   <View
+//                     style={[
+//                       styles.subjectBadge,
+//                       { backgroundColor: colors.primary + "20" },
+//                     ]}
+//                   >
+//                     <Text
+//                       style={[styles.subjectBadgeText, { color: colors.text }]}
+//                     >
+//                       {item.subject_name || "විෂය නැත"}
+//                     </Text>
+//                   </View>
+//                   <View
+//                     style={[
+//                       styles.lessonBadge,
+//                       { backgroundColor: colors.tint + "20" },
+//                     ]}
+//                   >
+//                     <Text
+//                       style={[styles.lessonBadgeText, { color: colors.text }]}
+//                     >
+//                       {item.lesson_name || "පාඩම නැත"}
+//                     </Text>
+//                   </View>
+//                 </View>
+
+//                 <TouchableOpacity
+//                   onPress={(e) => {
+//                     e.stopPropagation();
+//                     handleDeleteCard(item.id);
+//                   }}
+//                   style={styles.deleteButton}
+//                 >
+//                   <Ionicons name="trash-outline" size={18} color="#ef4444" />
+//                 </TouchableOpacity>
+//               </View>
+
+//               {/* Question Section */}
+//               <View style={styles.sectionBox}>
+//                 <Text style={[styles.sectionLabel, { color: colors.text }]}>
+//                   ප්‍රශ්නය:
+//                 </Text>
+//                 {renderContent(item.questionType, item.questionContent)}
+//               </View>
+
+//               <View
+//                 style={[
+//                   styles.divider,
+//                   { backgroundColor: colors.tint + "20" },
+//                 ]}
+//               />
+
+//               {/* Answer Section */}
+//               <View style={styles.sectionBox}>
+//                 <Text style={[styles.sectionLabel, { color: colors.text }]}>
+//                   පිළිතුර:
+//                 </Text>
+//                 {renderContent(item.answerType, item.answerContent)}
+//               </View>
+
+//               {/* Reminder Footer */}
+//               {item.reminderEnabled === 1 && (
+//                 <View
+//                   style={[
+//                     styles.reminderFooter,
+//                     { backgroundColor: colors.primary + "10" },
+//                   ]}
+//                 >
+//                   <Ionicons
+//                     name="notifications-outline"
+//                     size={13}
+//                     color={colors.primary}
+//                   />
+//                   <Text
+//                     style={[styles.reminderText, { color: colors.primary }]}
+//                   >
+//                     මتක් කිරීම:{" "}
+//                     {item.reminderDays === "3 days"
+//                       ? "දින 3යි"
+//                       : item.reminderDays === "7 days"
+//                         ? "දින 7යි"
+//                         : item.reminderDays === "14 days"
+//                           ? "දින 14යි"
+//                           : "මාස 1යි"}
+//                   </Text>
+//                 </View>
+//               )}
+//             </TouchableOpacity>
+//           )}
+//         />
+//       )}
+//     </View>
+//   );
+// }
+
+// const styles = StyleSheet.create({
+//   container: { flex: 1, paddingHorizontal: 16, paddingTop: 50 },
+//   headerTitle: {
+//     fontSize: 20,
+//     fontWeight: "bold",
+//     marginBottom: 16,
+//     textAlign: "center",
+//   },
+//   listContainer: { paddingBottom: 30 },
+//   emptyContainer: {
+//     flex: 1,
+//     justifyContent: "center",
+//     alignItems: "center",
+//     paddingBottom: 50,
+//   },
+//   emptyText: { fontSize: 16, fontWeight: "bold", marginTop: 12 },
+//   emptySubText: {
+//     fontSize: 12,
+//     textAlign: "center",
+//     marginTop: 4,
+//     paddingHorizontal: 30,
+//   },
+//   cardItem: {
+//     borderRadius: 14,
+//     padding: 14,
+//     marginBottom: 14,
+//     borderWidth: 1,
+//     elevation: 3,
+//   },
+//   cardHeader: {
+//     flexDirection: "row",
+//     justifyContent: "space-between",
+//     alignItems: "center",
+//     marginBottom: 10,
+//   },
+//   badgeRow: {
+//     flexDirection: "row",
+//     gap: 6,
+//     flexWrap: "wrap",
+//     flex: 1,
+//     marginRight: 8,
+//   },
+//   subjectBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+//   subjectBadgeText: { fontSize: 11, fontWeight: "bold" },
+//   lessonBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+//   lessonBadgeText: { fontSize: 11, fontWeight: "600" },
+//   deleteButton: { padding: 4 },
+//   sectionBox: { marginVertical: 4 },
+//   sectionLabel: { fontSize: 12, fontWeight: "700", marginBottom: 2 },
+//   cardContentText: { fontSize: 14, fontWeight: "500" },
+//   imagePreviewWrapper: {
+//     height: 100,
+//     borderRadius: 8,
+//     overflow: "hidden",
+//     justifyContent: "center",
+//     alignItems: "center",
+//     backgroundColor: "#f3f4f6",
+//     marginTop: 2,
+//   },
+//   contentImage: { width: "100%", height: "100%", resizeMode: "cover" },
+//   voiceIndicator: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     gap: 6,
+//     marginTop: 2,
+//   },
+//   voiceText: { fontSize: 12, fontWeight: "600" },
+//   divider: { height: 1, marginVertical: 8 },
+//   reminderFooter: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     gap: 5,
+//     marginTop: 10,
+//     paddingHorizontal: 8,
+//     paddingVertical: 4,
+//     borderRadius: 6,
+//     alignSelf: "flex-start",
+//   },
+//   reminderText: { fontSize: 10, fontWeight: "600" },
+// });
+
+import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect, useNavigation, useRouter } from "expo-router";
+import * as SQLite from "expo-sqlite";
+import { useCallback, useEffect, useState } from "react";
+import {
+  Dimensions,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useLanguage } from "../../context/LanguageContext";
+import { useTheme } from "../../context/ThemeContext";
+
+const db = SQLite.openDatabaseSync("flashcards.db");
+const { height } = Dimensions.get("window");
+
+export default function HomeScreen() {
+  const { colors } = useTheme();
+  const router = useRouter();
+  const navigation = useNavigation();
+  const { t } = useLanguage();
+
+  const [subjectsList, setSubjectsList] = useState<any[]>([]);
+  const [lessonsList, setLessonsList] = useState<any[]>([]);
+  const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(
+    null,
+  );
+  const [selectedLessonId, setSelectedLessonId] = useState<number | null>(null);
+  const [selectedSubjectName, setSelectedSubjectName] = useState<string>("");
+  const [selectedLessonName, setSelectedLessonName] = useState<string>("");
+  const [cards, setCards] = useState<any[]>([]);
+  const [totalCardsCount, setTotalCardsCount] = useState(0);
+
+  useEffect(() => {
+    loadInitialData(true);
+    if (navigation) {
+      const unsubscribe = navigation.addListener("focus", () => {
+        refreshDataOnly();
+      });
+      return unsubscribe;
+    }
+  }, [navigation]);
+
+  const loadInitialData = async (isFirstLoad = false) => {
+    try {
+      // await db.execAsync(
+      //   `ALTER TABLE flashcards ADD COLUMN reminderNextDate TEXT;`,
+      // );
+      const countRes: any = await db.getAllAsync(
+        "SELECT COUNT(*) as count FROM flashcards;",
+      );
+
+      if (countRes && countRes.length > 0) {
+        setTotalCardsCount(countRes[0].count);
+      }
+
+      const subs: any = await db.getAllAsync("SELECT * FROM subjects;");
+      setSubjectsList(subs || []);
+
+      if (subs && subs.length > 0) {
+        if (isFirstLoad || selectedSubjectId === null) {
+          const firstSub = subs[0];
+          setSelectedSubjectId(firstSub.id);
+          setSelectedSubjectName(firstSub.name);
+          await loadLessonsForSubject(firstSub.id, true);
+        } else {
+          if (selectedLessonId !== null) {
+            fetchCards(selectedSubjectId, selectedLessonId);
+          }
+        }
+      } else {
+        setSubjectsList([]);
+        setLessonsList([]);
+        setCards([]);
+      }
+    } catch (err) {
+      console.log("Error loading initial data:", err);
+    }
+  };
+
+  const refreshDataOnly = async () => {
+    try {
+      const countRes: any = await db.getAllAsync(
+        "SELECT COUNT(*) as count FROM flashcards;",
+      );
+      if (countRes && countRes.length > 0) {
+        setTotalCardsCount(countRes[0].count);
+      }
+
+      const subs: any = await db.getAllAsync("SELECT * FROM subjects;");
+      setSubjectsList(subs || []);
+
+      if (selectedSubjectId !== null && selectedLessonId !== null) {
+        fetchCards(selectedSubjectId, selectedLessonId);
+      }
+    } catch (err) {
+      console.log("Error refreshing data:", err);
+    }
+  };
+
+  const loadLessonsForSubject = async (subId: number, isFirstLoad = false) => {
+    try {
+      const less: any = await db.getAllAsync(
+        "SELECT * FROM lessons WHERE subject_id = ?;",
+        [subId],
+      );
+      setLessonsList(less || []);
+
+      if (less && less.length > 0) {
+        if (isFirstLoad || !less.some((l: any) => l.id === selectedLessonId)) {
+          setSelectedLessonId(less[0].id);
+          setSelectedLessonName(less[0].name);
+          fetchCards(subId, less[0].id);
+        }
+      } else {
+        setSelectedLessonId(null);
+        setSelectedLessonName("");
+        setCards([]);
+      }
+    } catch (err) {
+      console.log("Error loading lessons:", err);
+    }
+  };
+
+  const fetchCards = async (subId: number, lesId: number) => {
+    try {
+      const result: any = await db.getAllAsync(
+        "SELECT * FROM flashcards WHERE subject_id = ? AND lesson_id = ?;",
+        [subId, lesId],
+      );
+      setCards(result || []);
+    } catch (error) {
+      console.log("Error fetching filtered cards:", error);
+    }
+  };
+
+  // useFocusEffect(
+  //   useCallback(() => {
+  //     fetchCards(subId, lesId);
+  //   }, [])
+  // );
+  useFocusEffect(
+    useCallback(() => {
+      if (selectedSubjectId && selectedLessonId) {
+        fetchCards(selectedSubjectId, selectedLessonId);
+        console.log(cards);
+      }
+    }, [selectedSubjectId, selectedLessonId]),
+  );
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
+      >
+        {/* Uda kotase 1/3 size eka saha attractive Welcome Banner ek */}
+        <View style={styles.heroContainer}>
+          <Image
+            // source={{
+            //   uri: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1000&auto=format&fit=crop",
+            // }}
+            source={{
+              uri: "https://images.unsplash.com/photo-1616400619175-5beda3a17896?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=NHwxMjA3fDA%3D",
+            }}
+            style={styles.heroImage}
+          />
+          <View
+            style={[
+              styles.heroOverlay,
+              // { backgroundColor: colors.primary + "E6" },
+            ]}
+          >
+            <View style={styles.heroContent}>
+              <View style={styles.welcomeRow}>
+                <Text style={[styles.welcomeSmall, styles.textShadow]}>
+                  {t("homepage", "welcome")}
+                </Text>
+                {/* <View style={styles.cardCountPill}>
+                  <Ionicons name="albums-outline" size={12} color="#fff" />
+                  <Text style={styles.cardCountText}>
+                    {totalCardsCount} Cards
+                  </Text>
+                </View> */}
+              </View>
+              <Text style={[styles.heroMainTitle, styles.textShadow]}>
+                Flashcard Hub 🚀
+              </Text>
+              <Text style={[styles.heroSubText, styles.textShadow]}>
+                {t("homepage", "subtitle")}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Subject Selection Section */}
+        <View style={styles.sectionContainer}>
+          <Text style={[styles.label, { color: colors.text }]}>
+            {t("homepage", "selectSubject")}
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.chipScroll}
+          >
+            {subjectsList.map((subj) => (
+              <TouchableOpacity
+                key={subj.id}
+                style={[
+                  styles.subjectChip,
+                  {
+                    backgroundColor: colors.cardBackground,
+                    borderColor: colors.tint + "30",
+                  },
+                  selectedSubjectId === subj.id && {
+                    backgroundColor: colors.primary,
+                    borderColor: colors.primary,
+                  },
+                ]}
+                onPress={() => {
+                  setSelectedSubjectId(subj.id);
+                  setSelectedSubjectName(subj.name);
+                  loadLessonsForSubject(subj.id, true);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.subjectChipText,
+                    {
+                      color:
+                        selectedSubjectId === subj.id ? "#fff" : colors.text,
+                    },
+                  ]}
+                >
+                  {subj.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Lesson Selection Section */}
+        {selectedSubjectId !== null && lessonsList.length > 0 && (
+          <View style={styles.sectionContainer}>
+            <Text style={[styles.label, { color: colors.text }]}>
+              {t("homepage", "selectLesson")}
+            </Text>
+            <View style={styles.lessonsGridContainer}>
+              {lessonsList.map((les) => (
+                <TouchableOpacity
+                  key={les.id}
+                  style={[
+                    styles.lessonChipGrid,
+                    {
+                      backgroundColor: colors.cardBackground,
+                      borderColor: colors.tint + "30",
+                    },
+                    selectedLessonId === les.id && {
+                      backgroundColor: colors.primary,
+                      borderColor: colors.primary,
+                    },
+                  ]}
+                  onPress={() => {
+                    setSelectedLessonId(les.id);
+                    setSelectedLessonName(les.name);
+                    if (selectedSubjectId) {
+                      fetchCards(selectedSubjectId, les.id);
+                    }
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.lessonChipText,
+                      {
+                        color:
+                          selectedLessonId === les.id ? "#ffffff" : colors.text,
+                      },
+                    ]}
+                  >
+                    {les.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Cards List Section */}
+        <View style={styles.listContainer}>
+          <View style={styles.subTitleRow}>
+            <Text style={[styles.subTitle, { color: colors.text }]}>
+              {selectedSubjectName} - {selectedLessonName}
+            </Text>
+            <Text
+              style={{ color: colors.tint, fontSize: 12, fontWeight: "600" }}
+            >
+              {cards.length} {t("homepage", "totalCards")}
+            </Text>
+          </View>
+
+          {cards.length === 0 ? (
+            <View
+              style={[
+                styles.emptyContainer,
+                {
+                  backgroundColor: colors.cardBackground,
+                  borderColor: colors.tint + "20",
+                },
+              ]}
+            >
+              <Ionicons
+                name="folder-open-outline"
+                size={42}
+                color={colors.tint}
+              />
+              <Text style={[styles.emptyText, { color: colors.text }]}>
+                {t("homepage", "noCardsMessage")}
+              </Text>
+            </View>
+          ) : (
+            cards.map((item, index) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[
+                  styles.cardItem,
+                  {
+                    backgroundColor: colors.cardBackground,
+                    borderColor: colors.tint + "20",
+                  },
+                ]}
+                activeOpacity={0.9}
+                onPress={() => {
+                  const allCardIds = cards.map((c) => c.id);
+                  router.push({
+                    pathname: "/card-detail",
+                    params: {
+                      id: item.id,
+                      cardIds: JSON.stringify(allCardIds),
+                      currentIndex: index,
+                    },
+                  });
+                }}
+              >
+                {/* Image or Placeholder Box */}
+                {/* <View style={styles.cardMediaBox}>
+                  {item.questionType === "image" && item.questionContent ? (
+                    <Image
+                      source={{ uri: item.questionContent }}
+                      style={styles.cardImage}
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        styles.placeholderBox,
+                        { backgroundColor: colors.primary + "15" },
+                      ]}
+                    >
+                      <Ionicons
+                        name={
+                          item.questionType === "voice"
+                            ? "mic-outline"
+                            : "document-text-outline"
+                        }
+                        size={24}
+                        color={colors.primary}
+                      />
+                      <Text
+                        style={[
+                          styles.placeholderText,
+                          { color: colors.primary },
+                        ]}
+                      >
+                        {item.questionType === "voice"
+                          ? "Voice Question"
+                          : "Flashcard #" + (index + 1)}
+                      </Text>
+                    </View>
+                  )}
+                </View> */}
+
+                {/* Card Details info */}
+                <View style={styles.cardInfoSection}>
+                  <View style={styles.cardHeaderRow}>
+                    <Text style={[styles.cardIndex, { color: colors.primary }]}>
+                      Card Ankaya #{index + 1}
+                    </Text>
+                    <View
+                      style={[
+                        styles.typePill,
+                        { backgroundColor: colors.primary + "15" },
+                      ]}
+                    >
+                      <Text
+                        style={[styles.typeText, { color: colors.primary }]}
+                      >
+                        {item.questionType}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text
+                    style={[styles.cardContentPreview, { color: colors.text }]}
+                    numberOfLines={2}
+                  >
+                    {item.questionType === "text"
+                      ? item.questionContent
+                      : item.questionType === "image"
+                        ? "[Pinthuru prashnayaki]"
+                        : "[Shrawya handa patigatakirimak]"}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  textShadow: {
+    textShadowColor: "rgba(0, 0, 0, 0.75)",
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 10,
+  },
+  container: { flex: 1 },
+  heroContainer: {
+    width: "100%",
+    height: height * 0.32, // Screen eken 1/3 (approx 32%) height ekak labi
+    position: "relative",
+    borderBottomLeftRadius: 25,
+    borderBottomRightRadius: 25,
+    overflow: "hidden",
+    marginBottom: 10,
+  },
+  heroImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  heroOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "flex-end",
+    padding: 20,
+  },
+  heroContent: {
+    paddingBottom: 10,
+  },
+  welcomeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  welcomeSmall: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
+    opacity: 0.9,
+  },
+  cardCountPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  cardCountText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "bold",
+  },
+  heroMainTitle: {
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 4,
+  },
+  heroSubText: {
+    color: "#fff",
+    fontSize: 12,
+    opacity: 0.85,
+  },
+  sectionContainer: { paddingHorizontal: 16, marginTop: 12 },
+  label: { fontSize: 13, fontWeight: "bold", marginBottom: 8 },
+  chipScroll: { flexDirection: "row" },
+  subjectChip: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginRight: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 1,
+  },
+  subjectChipText: { fontWeight: "bold", fontSize: 13 },
+  lessonsGridContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  lessonChipGrid: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  lessonChipText: { fontSize: 12, fontWeight: "600" },
+  listContainer: { paddingHorizontal: 16, marginTop: 20 },
+  subTitleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  subTitle: { fontSize: 16, fontWeight: "bold" },
+  emptyContainer: {
+    padding: 35,
+    borderRadius: 16,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyText: {
+    marginTop: 10,
+    fontSize: 13,
+    fontWeight: "500",
+    textAlign: "center",
+  },
+  cardItem: {
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 14,
+    overflow: "hidden",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
+  cardMediaBox: { width: "100%", height: 130, backgroundColor: "#f3f4f6" },
+  cardImage: { width: "100%", height: "100%", resizeMode: "cover" },
+  placeholderBox: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+  },
+  placeholderText: { fontSize: 12, fontWeight: "bold" },
+  cardInfoSection: { padding: 14 },
+  cardHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  cardIndex: { fontSize: 12, fontWeight: "bold" },
+  typePill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  typeText: { fontSize: 10, fontWeight: "bold", textTransform: "uppercase" },
+  cardContentPreview: { fontSize: 14, lineHeight: 20, fontWeight: "500" },
+});
