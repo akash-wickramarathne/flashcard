@@ -1172,6 +1172,71 @@ export default function TodayScreen() {
             </View>
           ) : (
             todayCards.map((item, index) => (
+              // <TouchableOpacity
+              //   key={item.id}
+              //   style={[
+              //     styles.cardItem,
+              //     {
+              //       backgroundColor: colors.cardBackground,
+              //       borderColor: colors.tint + "20",
+              //     },
+              //   ]}
+              //   activeOpacity={0.9}
+              //   onPress={() => {
+              //     const allCardIds = todayCards.map((c) => c.id);
+              //     router.push({
+              //       pathname: "/card-detail",
+              //       params: {
+              //         id: item.id,
+              //         cardIds: JSON.stringify(allCardIds),
+              //         currentIndex: index,
+              //       },
+              //     });
+              //   }}
+              // >
+              //   <View style={styles.cardHeaderRow}>
+              //     <View
+              //       style={[
+              //         styles.indexBadge,
+              //         { backgroundColor: colors.primary + "15" },
+              //       ]}
+              //     >
+              //       <Text style={[styles.cardIndex, { color: colors.primary }]}>
+              //         {t("common", "card")} #{index + 1}
+              //       </Text>
+              //     </View>
+              //     <View
+              //       style={[
+              //         styles.reminderPill,
+              //         { backgroundColor: colors.primary + "20" },
+              //       ]}
+              //     >
+              //       <Ionicons
+              //         name="time-outline"
+              //         size={12}
+              //         color={colors.primary}
+              //       />
+              //       <Text
+              //         style={[styles.reminderText, { color: colors.primary }]}
+              //       >
+              //         {item.reminderDays === "-1" || item.reminderDays === -1
+              //           ? "අද දින"
+              //           : `දින ${item.reminderDays} කින්`}
+              //       </Text>
+              //     </View>
+              //   </View>
+
+              //   <Text
+              //     style={[styles.cardContentPreview, { color: colors.text }]}
+              //     numberOfLines={2}
+              //   >
+              //     {item.questionType === "text"
+              //       ? item.questionContent
+              //       : item.questionType === "image"
+              //         ? "[පින්තූර ප්‍රශ්නයකි]"
+              //         : "[ශ්‍රව්‍ය හඬ පටිගත කිරීමකි]"}
+              //   </Text>
+              // </TouchableOpacity>
               <TouchableOpacity
                 key={item.id}
                 style={[
@@ -1181,7 +1246,7 @@ export default function TodayScreen() {
                     borderColor: colors.tint + "20",
                   },
                 ]}
-                activeOpacity={0.9}
+                activeOpacity={0.85}
                 onPress={() => {
                   const allCardIds = todayCards.map((c) => c.id);
                   router.push({
@@ -1194,48 +1259,68 @@ export default function TodayScreen() {
                   });
                 }}
               >
-                <View style={styles.cardHeaderRow}>
-                  <View
-                    style={[
-                      styles.indexBadge,
-                      { backgroundColor: colors.primary + "15" },
-                    ]}
-                  >
-                    <Text style={[styles.cardIndex, { color: colors.primary }]}>
-                      කාඩ් අංකය #{index + 1}
-                    </Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.reminderPill,
-                      { backgroundColor: colors.primary + "20" },
-                    ]}
-                  >
-                    <Ionicons
-                      name="time-outline"
-                      size={12}
-                      color={colors.primary}
-                    />
-                    <Text
-                      style={[styles.reminderText, { color: colors.primary }]}
-                    >
-                      {item.reminderDays === "-1" || item.reminderDays === -1
-                        ? "අද දින"
-                        : `දින ${item.reminderDays} කින්`}
-                    </Text>
-                  </View>
+                {/* 🌟 වම් පැත්තේ ලස්සන අයිකන් හෝ මීඩියා ප්‍රිව്യൂ බොක්ස් එක */}
+                <View
+                  style={[
+                    styles.cardLeftIndicator,
+                    { backgroundColor: colors.primary + "12" },
+                  ]}
+                >
+                  <Ionicons
+                    name={
+                      item.questionType === "image"
+                        ? "image-outline"
+                        : item.questionType === "voice"
+                          ? "mic-outline"
+                          : "book-outline"
+                    }
+                    size={22}
+                    color={colors.primary}
+                  />
                 </View>
 
-                <Text
-                  style={[styles.cardContentPreview, { color: colors.text }]}
-                  numberOfLines={2}
-                >
-                  {item.questionType === "text"
-                    ? item.questionContent
-                    : item.questionType === "image"
-                      ? "[පින්තූර ප්‍රශ්නයකි]"
-                      : "[ශ්‍රව්‍ය හඬ පටිගත කිරීමකි]"}
-                </Text>
+                {/* මැද සහ දකුණු පැත්තේ ප්‍රශ්න විස්තර */}
+                <View style={styles.cardInfoSection}>
+                  <View style={styles.cardHeaderRow}>
+                    <Text style={[styles.cardIndex, { color: colors.primary }]}>
+                      Flashcard #{index + 1}
+                    </Text>
+                    <View
+                      style={[
+                        styles.typePill,
+                        { backgroundColor: colors.primary + "15" },
+                      ]}
+                    >
+                      <Text
+                        style={[styles.typeText, { color: colors.primary }]}
+                      >
+                        {item.questionType}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text
+                    style={[styles.cardContentPreview, { color: colors.text }]}
+                    numberOfLines={2}
+                  >
+                    {item.questionType === "text"
+                      ? item.questionContent
+                        ? item.questionContent
+                        : t("common", "emppty")
+                      : item.questionType === "image"
+                        ? "🖼️ Image Question"
+                        : "🎙️ Voice Note"}
+                  </Text>
+                </View>
+
+                {/* දකුණු පැත්තෙන් ඇතුළට යාමට උදව් වන කුඩා ඊතල අයිකන් එක */}
+                <View style={styles.cardArrowBox}>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={18}
+                    color={colors.tint}
+                  />
+                </View>
               </TouchableOpacity>
             ))
           )}
@@ -1293,29 +1378,69 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   emptySub: { marginTop: 6, fontSize: 13, textAlign: "center", opacity: 0.8 },
+  // cardItem: {
+  //   padding: 16,
+  //   borderRadius: 16,
+  //   borderWidth: 1,
+  //   marginBottom: 14,
+  //   elevation: 2,
+  //   shadowColor: "#000",
+  //   shadowOffset: { width: 0, height: 2 },
+  //   shadowOpacity: 0.05,
+  //   shadowRadius: 4,
+  // },
   cardItem: {
-    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
     borderRadius: 16,
     borderWidth: 1,
-    marginBottom: 14,
+    marginBottom: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    overflow: "hidden",
     elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 5,
+  },
+  cardLeftIndicator: {
+    width: 45,
+    height: 45,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  cardInfoSection: {
+    flex: 1,
+    justifyContent: "center",
   },
   cardHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 4,
   },
+  cardIndex: { fontSize: 11, fontWeight: "bold", letterSpacing: 0.5 },
+  typePill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  typeText: { fontSize: 9, fontWeight: "bold", textTransform: "uppercase" },
+  // cardHeaderRow: {
+  //   flexDirection: "row",
+  //   justifyContent: "space-between",
+  //   alignItems: "center",
+  //   marginBottom: 8,
+  // },
   indexBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
   },
-  cardIndex: { fontSize: 11, fontWeight: "bold" },
+  // cardIndex: { fontSize: 11, fontWeight: "bold" },
   reminderPill: {
     flexDirection: "row",
     alignItems: "center",

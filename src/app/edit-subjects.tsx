@@ -3,14 +3,14 @@ import { Ionicons } from "@expo/vector-icons";
 import * as SQLite from "expo-sqlite";
 import { useEffect, useState } from "react";
 import {
-    Alert,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 
@@ -111,10 +111,10 @@ export default function EditSubjectsScreen() {
       ]);
       setNewSubjectName("");
       loadSubjects();
-      Alert.alert(
-        t("common", "successful"),
-        t("manageLessons", "subjectAdded"),
-      );
+      // Alert.alert(
+      //   t("common", "successful"),
+      //   t("manageLessons", "subjectAdded"),
+      // );
     } catch (err) {
       Alert.alert(t("common", "error"), t("manageLessons", "subjectExists"));
     }
@@ -132,7 +132,7 @@ export default function EditSubjectsScreen() {
       );
       setNewLessonName("");
       loadLessons(selectedSubjectId);
-      Alert.alert(t("common", "successful"), t("manageLessons", "lessonAdded"));
+      // Alert.alert(t("common", "successful"), t("manageLessons", "lessonAdded"));
     } catch (err) {
       console.log("Add lesson error:", err);
     }
@@ -164,10 +164,10 @@ export default function EditSubjectsScreen() {
       setModalVisible(false);
       setEditingItem(null);
       setEditingType(null);
-      Alert.alert(
-        t("common", "successful"),
-        t("manageLessons", "lessonUpdated"),
-      );
+      // Alert.alert(
+      //   t("common", "successful"),
+      //   t("manageLessons", "lessonUpdated"),
+      // );
     } catch (err) {
       Alert.alert(
         t("common", "error"),

@@ -4059,6 +4059,7 @@ import {
 } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
 
+import SwipeableNavigator from "@/components/SwipeableNavigator";
 import { useLanguage } from "@/context/LanguageContext";
 import * as FileSystem from "expo-file-system/legacy";
 
@@ -4142,21 +4143,40 @@ export default function AddCardScreen() {
       });
 
       // flashcards වගුව තුළ subject_id සහ lesson_id (Foreign Keys) සම්බන්ධ වන සේ සකස් කිරීම
+      // await db.execAsync(`
+      //   CREATE TABLE IF NOT EXISTS flashcards (
+      //     id INTEGER PRIMARY KEY AUTOINCREMENT,
+      //     subject_id INTEGER,
+      //     lesson_id INTEGER,
+      //     questionType TEXT,
+      //     questionContent TEXT,
+      //     answerType TEXT,
+      //     answerContent TEXT,
+      //     reminderEnabled INTEGER,
+      //     reminderDays TEXT,
+      //     FOREIGN KEY (subject_id) REFERENCES subjects(id),
+      //     FOREIGN KEY (lesson_id) REFERENCES lessons(id)
+      //   );
+      // `);
       await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS flashcards (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          subject_id INTEGER,
-          lesson_id INTEGER,
-          questionType TEXT,
-          questionContent TEXT,
-          answerType TEXT,
-          answerContent TEXT,
-          reminderEnabled INTEGER,
-          reminderDays TEXT,
-          FOREIGN KEY (subject_id) REFERENCES subjects(id),
-          FOREIGN KEY (lesson_id) REFERENCES lessons(id)
-        );
-      `);
+  CREATE TABLE IF NOT EXISTS flashcards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subject_id INTEGER,
+    lesson_id INTEGER,
+    questionType TEXT,
+    questionContent TEXT,
+    answerType TEXT,
+    answerContent TEXT,
+    reminderEnabled INTEGER,
+    reminderDays TEXT,
+    last_reviewed TEXT,
+    FOREIGN KEY (subject_id) REFERENCES subjects(id),
+    FOREIGN KEY (lesson_id) REFERENCES lessons(id)
+  );
+`);
+      await db.execAsync(`
+      ALTER TABLE flashcards ADD COLUMN last_reviewed TEXT;
+    `);
       // await db.execAsync(`
       //   CREATE TABLE IF NOT EXISTS flashcards (
       //     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -4181,10 +4201,25 @@ export default function AddCardScreen() {
 
   const loadSubjects = async () => {
     try {
+      // await db.execAsync(
+      //   `ALTER TABLE flashcards ADD COLUMN last_reviewed TEXT;`,
+      // );
       const subs: any = await db.getAllAsync("SELECT * FROM subjects;");
       setSubjectsList(subs || []);
     } catch (err) {
       console.log("Load subjects error:", err);
+    }
+  };
+  const addLastReviewedColumn = async (db: any) => {
+    try {
+      // ඩේටාබේස් ටේබල් එකට last_reviewed කොලම් එක එකතු කිරීම
+      await db.execAsync(`
+      ALTER TABLE flashcards ADD COLUMN last_reviewed TEXT;
+    `);
+      console.log("last_reviewed column successfully added! 🎉");
+    } catch (error) {
+      // මෙම කොලම් එක දැනටමත් ඩේටාබේස් එකේ තිබේ නම් මෙහිදී එන දෝෂය මඟ හැරේ
+      console.log("Column already exists or migration note:", error);
     }
   };
 
@@ -4566,440 +4601,453 @@ export default function AddCardScreen() {
   // };
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.contentContainer}
-    >
-      <Text style={[styles.headerTitle, { color: colors.text }]}>
-        {t("createCard", "addCardTitle")}
-      </Text>
-
-      {/* --- විෂය තේරීම (Subject Selection) --- */}
-      <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
-        <Text style={[styles.label, { color: colors.text }]}>
-          {t("homepage", "selectSubject")}
+    <SwipeableNavigator>
+      <ScrollView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        contentContainerStyle={styles.contentContainer}
+      >
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          {t("createCard", "addCardTitle")}
         </Text>
-        <View style={styles.subjectContainer}>
-          {subjectsList.map((subj) => (
-            <TouchableOpacity
-              key={subj.id}
-              style={[
-                styles.subjectButton,
-                selectedSubjectId === subj.id && {
-                  backgroundColor: colors.primary,
-                  borderColor: colors.primary,
-                },
-              ]}
-              onPress={() => {
-                setSelectedSubjectId(subj.id);
-                setSelectedLessonId(null); // Reset lesson
-                loadLessonsForSubject(subj.id);
-              }}
-            >
-              <Text
+
+        {/* --- විෂය තේරීම (Subject Selection) --- */}
+        <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
+          <Text style={[styles.label, { color: colors.text }]}>
+            {t("homepage", "selectSubject")}
+          </Text>
+          <View style={styles.subjectContainer}>
+            {subjectsList.map((subj) => (
+              <TouchableOpacity
+                key={subj.id}
                 style={[
-                  styles.subjectButtonText,
-                  {
-                    color:
-                      selectedSubjectId === subj.id ? "#ffffff" : colors.text,
+                  styles.subjectButton,
+                  selectedSubjectId === subj.id && {
+                    backgroundColor: colors.primary,
+                    borderColor: colors.primary,
                   },
                 ]}
+                onPress={() => {
+                  setSelectedSubjectId(subj.id);
+                  setSelectedLessonId(null); // Reset lesson
+                  loadLessonsForSubject(subj.id);
+                }}
               >
-                {subj.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* --- පාඩම තේරීම (Lesson Selection - Multi-line Grid) --- */}
-        {selectedSubjectId !== null && (
-          <>
-            <Text style={[styles.label, { color: colors.text, marginTop: 14 }]}>
-              {t("homepage", "selectLesson")}
-            </Text>
-            <View style={styles.lessonsGridContainer}>
-              {lessonsList.map((les) => (
-                <TouchableOpacity
-                  key={les.id}
+                <Text
                   style={[
-                    styles.lessonChipGrid,
-                    selectedLessonId === les.id && {
-                      backgroundColor: colors.primary,
-                      borderColor: colors.primary,
+                    styles.subjectButtonText,
+                    {
+                      color:
+                        selectedSubjectId === subj.id ? "#ffffff" : colors.text,
                     },
                   ]}
-                  onPress={() => setSelectedLessonId(les.id)}
                 >
-                  <Text
+                  {subj.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* --- පාඩම තේරීම (Lesson Selection - Multi-line Grid) --- */}
+          {selectedSubjectId !== null && (
+            <>
+              <Text
+                style={[styles.label, { color: colors.text, marginTop: 14 }]}
+              >
+                {t("homepage", "selectLesson")}
+              </Text>
+              <View style={styles.lessonsGridContainer}>
+                {lessonsList.map((les) => (
+                  <TouchableOpacity
+                    key={les.id}
                     style={[
-                      styles.lessonChipText,
-                      {
-                        color:
-                          selectedLessonId === les.id ? "#ffffff" : colors.text,
+                      styles.lessonChipGrid,
+                      selectedLessonId === les.id && {
+                        backgroundColor: colors.primary,
+                        borderColor: colors.primary,
                       },
                     ]}
+                    onPress={() => setSelectedLessonId(les.id)}
                   >
-                    {les.name}
+                    <Text
+                      style={[
+                        styles.lessonChipText,
+                        {
+                          color:
+                            selectedLessonId === les.id
+                              ? "#ffffff"
+                              : colors.text,
+                        },
+                      ]}
+                    >
+                      {les.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          )}
+        </View>
+
+        {/* --- 1. ප්‍රශ්නය (QUESTION SECTION) --- */}
+        <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
+          <Text style={[styles.sectionTitle, { color: colors.primary }]}>
+            {t("cardDetail", "questionLabel")}
+          </Text>
+
+          <View style={styles.typeSelector}>
+            {(["text", "image", "voice"] as const).map((type) => (
+              <TouchableOpacity
+                key={type}
+                style={[
+                  styles.typeButton,
+                  questionType === type && { backgroundColor: colors.primary },
+                ]}
+                onPress={() => setQuestionType(type)}
+              >
+                <Ionicons
+                  name={
+                    type === "text"
+                      ? "text"
+                      : type === "image"
+                        ? "image"
+                        : "mic"
+                  }
+                  size={16}
+                  color={questionType === type ? "#ffffff" : colors.text}
+                />
+                <Text
+                  style={[
+                    styles.typeButtonText,
+                    { color: questionType === type ? "#ffffff" : colors.text },
+                  ]}
+                >
+                  {type === "text"
+                    ? t("createCard", "textTypeLabel")
+                    : type === "image"
+                      ? t("createCard", "imageTypeLabel")
+                      : t("createCard", "audioTypeLabel")}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {questionType === "text" && (
+            <TextInput
+              style={[
+                styles.textArea,
+                { color: colors.text, borderColor: colors.tint },
+              ]}
+              placeholder={t("createCard", "questionPlaceholder")}
+              placeholderTextColor="#9ca3af"
+              multiline
+              value={questionText}
+              onChangeText={setQuestionText}
+            />
+          )}
+
+          {questionType === "image" && (
+            <TouchableOpacity
+              style={[styles.uploadBox, { borderColor: colors.tint }]}
+              onPress={() => pickImage("question")}
+            >
+              {questionImage ? (
+                <View style={styles.previewContainer}>
+                  <Image
+                    source={{ uri: questionImage }}
+                    style={styles.previewImage}
+                  />
+                  <TouchableOpacity
+                    style={styles.deleteImageIcon}
+                    onPress={() => setQuestionImage(null)}
+                  >
+                    <Ionicons name="trash" size={18} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <>
+                  <Ionicons
+                    name="image-outline"
+                    size={30}
+                    color={colors.primary}
+                  />
+                  <Text style={{ color: colors.text, marginTop: 5 }}>
+                    {t("createCard", "chooseImage")}
                   </Text>
-                </TouchableOpacity>
-              ))}
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {questionType === "voice" && (
+            <View>
+              {!questionVoiceRecorded ? (
+                <View style={styles.voiceWrapper}>
+                  <TouchableOpacity
+                    style={[
+                      styles.actionBox,
+                      {
+                        backgroundColor: isRecordingQ
+                          ? "#ef4444"
+                          : colors.primary,
+                      },
+                    ]}
+                    onPress={() => handleVoiceToggle("question")}
+                  >
+                    <Animated.View
+                      style={{
+                        transform: [{ scale: isRecordingQ ? pulseAnim : 1 }],
+                      }}
+                    >
+                      <Ionicons
+                        name={isRecordingQ ? "stop-circle" : "mic"}
+                        size={22}
+                        color="#ffffff"
+                      />
+                    </Animated.View>
+
+                    <Text style={styles.actionBoxText}>
+                      {isRecordingQ
+                        ? t("createCard", "recordingInProgress")
+                        : t("createCard", "startRecording")}
+                    </Text>
+
+                    {isRecordingQ && (
+                      <View style={styles.waveContainer}>
+                        <Animated.View
+                          style={[styles.waveBar, { height: waveAnim1 }]}
+                        />
+                        <Animated.View
+                          style={[styles.waveBar, { height: waveAnim2 }]}
+                        />
+                        <Animated.View
+                          style={[styles.waveBar, { height: waveAnim3 }]}
+                        />
+                        <Animated.View
+                          style={[styles.waveBar, { height: waveAnim4 }]}
+                        />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View
+                  style={[styles.voicePlayerBox, { borderColor: colors.tint }]}
+                >
+                  <TouchableOpacity onPress={() => handlePlayVoice("question")}>
+                    <Ionicons
+                      name={isPlayingQ ? "pause-circle" : "play-circle"}
+                      size={32}
+                      color={colors.primary}
+                    />
+                  </TouchableOpacity>
+                  <Text style={{ color: colors.text, fontWeight: "500" }}>
+                    {isPlayingQ
+                      ? t("createCard", "playingAudio")
+                      : t("createCard", "recordingSaved")}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => deleteVoice("question")}
+                    style={styles.deleteBtn}
+                  >
+                    <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
-          </>
-        )}
-      </View>
-
-      {/* --- 1. ප්‍රශ්නය (QUESTION SECTION) --- */}
-      <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
-        <Text style={[styles.sectionTitle, { color: colors.primary }]}>
-          {t("cardDetail", "questionLabel")}
-        </Text>
-
-        <View style={styles.typeSelector}>
-          {(["text", "image", "voice"] as const).map((type) => (
-            <TouchableOpacity
-              key={type}
-              style={[
-                styles.typeButton,
-                questionType === type && { backgroundColor: colors.primary },
-              ]}
-              onPress={() => setQuestionType(type)}
-            >
-              <Ionicons
-                name={
-                  type === "text" ? "text" : type === "image" ? "image" : "mic"
-                }
-                size={16}
-                color={questionType === type ? "#ffffff" : colors.text}
-              />
-              <Text
-                style={[
-                  styles.typeButtonText,
-                  { color: questionType === type ? "#ffffff" : colors.text },
-                ]}
-              >
-                {type === "text"
-                  ? t("createCard", "textTypeLabel")
-                  : type === "image"
-                    ? t("createCard", "imageTypeLabel")
-                    : t("createCard", "audioTypeLabel")}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          )}
         </View>
 
-        {questionType === "text" && (
-          <TextInput
-            style={[
-              styles.textArea,
-              { color: colors.text, borderColor: colors.tint },
-            ]}
-            placeholder={t("cardDetail", "questionPlaceholder")}
-            placeholderTextColor="#9ca3af"
-            multiline
-            value={questionText}
-            onChangeText={setQuestionText}
-          />
-        )}
+        {/* --- 2. පිළිතුර (ANSWER SECTION) --- */}
+        <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
+          <Text style={[styles.sectionTitle, { color: colors.primary }]}>
+            {t("cardDetail", "answerLabel")}
+          </Text>
 
-        {questionType === "image" && (
-          <TouchableOpacity
-            style={[styles.uploadBox, { borderColor: colors.tint }]}
-            onPress={() => pickImage("question")}
-          >
-            {questionImage ? (
-              <View style={styles.previewContainer}>
-                <Image
-                  source={{ uri: questionImage }}
-                  style={styles.previewImage}
-                />
-                <TouchableOpacity
-                  style={styles.deleteImageIcon}
-                  onPress={() => setQuestionImage(null)}
-                >
-                  <Ionicons name="trash" size={18} color="#fff" />
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <>
-                <Ionicons
-                  name="image-outline"
-                  size={30}
-                  color={colors.primary}
-                />
-                <Text style={{ color: colors.text, marginTop: 5 }}>
-                  {t("createCard", "chooseImage")}
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
-        )}
-
-        {questionType === "voice" && (
-          <View>
-            {!questionVoiceRecorded ? (
-              <View style={styles.voiceWrapper}>
-                <TouchableOpacity
-                  style={[
-                    styles.actionBox,
-                    {
-                      backgroundColor: isRecordingQ
-                        ? "#ef4444"
-                        : colors.primary,
-                    },
-                  ]}
-                  onPress={() => handleVoiceToggle("question")}
-                >
-                  <Animated.View
-                    style={{
-                      transform: [{ scale: isRecordingQ ? pulseAnim : 1 }],
-                    }}
-                  >
-                    <Ionicons
-                      name={isRecordingQ ? "stop-circle" : "mic"}
-                      size={22}
-                      color="#ffffff"
-                    />
-                  </Animated.View>
-
-                  <Text style={styles.actionBoxText}>
-                    {isRecordingQ
-                      ? t("createCard", "recordingInProgress")
-                      : t("createCard", "startRecording")}
-                  </Text>
-
-                  {isRecordingQ && (
-                    <View style={styles.waveContainer}>
-                      <Animated.View
-                        style={[styles.waveBar, { height: waveAnim1 }]}
-                      />
-                      <Animated.View
-                        style={[styles.waveBar, { height: waveAnim2 }]}
-                      />
-                      <Animated.View
-                        style={[styles.waveBar, { height: waveAnim3 }]}
-                      />
-                      <Animated.View
-                        style={[styles.waveBar, { height: waveAnim4 }]}
-                      />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View
-                style={[styles.voicePlayerBox, { borderColor: colors.tint }]}
+          <View style={styles.typeSelector}>
+            {(["text", "image", "voice"] as const).map((type) => (
+              <TouchableOpacity
+                key={type}
+                style={[
+                  styles.typeButton,
+                  answerType === type && { backgroundColor: colors.primary },
+                ]}
+                onPress={() => setAnswerType(type)}
               >
-                <TouchableOpacity onPress={() => handlePlayVoice("question")}>
+                <Ionicons
+                  name={
+                    type === "text"
+                      ? "text"
+                      : type === "image"
+                        ? "image"
+                        : "mic"
+                  }
+                  size={16}
+                  color={answerType === type ? "#ffffff" : colors.text}
+                />
+                <Text
+                  style={[
+                    styles.typeButtonText,
+                    { color: answerType === type ? "#ffffff" : colors.text },
+                  ]}
+                >
+                  {type === "text"
+                    ? t("createCard", "textTypeLabel")
+                    : type === "image"
+                      ? t("createCard", "imageTypeLabel")
+                      : t("createCard", "audioTypeLabel")}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {answerType === "text" && (
+            <TextInput
+              style={[
+                styles.textArea,
+                { color: colors.text, borderColor: colors.tint },
+              ]}
+              placeholder={t("createCard", "answerPlaceholder")}
+              placeholderTextColor="#9ca3af"
+              multiline
+              value={answerText}
+              onChangeText={setAnswerText}
+            />
+          )}
+
+          {answerType === "image" && (
+            <TouchableOpacity
+              style={[styles.uploadBox, { borderColor: colors.tint }]}
+              onPress={() => pickImage("answer")}
+            >
+              {answerImage ? (
+                <View style={styles.previewContainer}>
+                  <Image
+                    source={{ uri: answerImage }}
+                    style={styles.previewImage}
+                  />
+                  <TouchableOpacity
+                    style={styles.deleteImageIcon}
+                    onPress={() => setAnswerImage(null)}
+                  >
+                    <Ionicons name="trash" size={18} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <>
                   <Ionicons
-                    name={isPlayingQ ? "pause-circle" : "play-circle"}
-                    size={32}
+                    name="image-outline"
+                    size={30}
                     color={colors.primary}
                   />
-                </TouchableOpacity>
-                <Text style={{ color: colors.text, fontWeight: "500" }}>
-                  {isPlayingQ
-                    ? t("createCard", "playingAudio")
-                    : t("createCard", "recordingSaved")}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => deleteVoice("question")}
-                  style={styles.deleteBtn}
-                >
-                  <Ionicons name="trash-outline" size={20} color="#ef4444" />
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        )}
-      </View>
-
-      {/* --- 2. පිළිතුර (ANSWER SECTION) --- */}
-      <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
-        <Text style={[styles.sectionTitle, { color: colors.primary }]}>
-          {t("cardDetail", "answerLabel")}
-        </Text>
-
-        <View style={styles.typeSelector}>
-          {(["text", "image", "voice"] as const).map((type) => (
-            <TouchableOpacity
-              key={type}
-              style={[
-                styles.typeButton,
-                answerType === type && { backgroundColor: colors.primary },
-              ]}
-              onPress={() => setAnswerType(type)}
-            >
-              <Ionicons
-                name={
-                  type === "text" ? "text" : type === "image" ? "image" : "mic"
-                }
-                size={16}
-                color={answerType === type ? "#ffffff" : colors.text}
-              />
-              <Text
-                style={[
-                  styles.typeButtonText,
-                  { color: answerType === type ? "#ffffff" : colors.text },
-                ]}
-              >
-                {type === "text"
-                  ? t("createCard", "textTypeLabel")
-                  : type === "image"
-                    ? t("createCard", "imageTypeLabel")
-                    : t("createCard", "audioTypeLabel")}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {answerType === "text" && (
-          <TextInput
-            style={[
-              styles.textArea,
-              { color: colors.text, borderColor: colors.tint },
-            ]}
-            placeholder={t("createCard", "answerPlaceholder")}
-            placeholderTextColor="#9ca3af"
-            multiline
-            value={answerText}
-            onChangeText={setAnswerText}
-          />
-        )}
-
-        {answerType === "image" && (
-          <TouchableOpacity
-            style={[styles.uploadBox, { borderColor: colors.tint }]}
-            onPress={() => pickImage("answer")}
-          >
-            {answerImage ? (
-              <View style={styles.previewContainer}>
-                <Image
-                  source={{ uri: answerImage }}
-                  style={styles.previewImage}
-                />
-                <TouchableOpacity
-                  style={styles.deleteImageIcon}
-                  onPress={() => setAnswerImage(null)}
-                >
-                  <Ionicons name="trash" size={18} color="#fff" />
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <>
-                <Ionicons
-                  name="image-outline"
-                  size={30}
-                  color={colors.primary}
-                />
-                <Text style={{ color: colors.text, marginTop: 5 }}>
-                  {t("createCard", "chooseImage")}
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
-        )}
-
-        {answerType === "voice" && (
-          <View>
-            {!answerVoiceRecorded ? (
-              <View style={styles.voiceWrapper}>
-                <TouchableOpacity
-                  style={[
-                    styles.actionBox,
-                    {
-                      backgroundColor: isRecordingA
-                        ? "#ef4444"
-                        : colors.primary,
-                    },
-                  ]}
-                  onPress={() => handleVoiceToggle("answer")}
-                >
-                  <Animated.View
-                    style={{
-                      transform: [{ scale: isRecordingA ? pulseAnim : 1 }],
-                    }}
-                  >
-                    <Ionicons
-                      name={isRecordingA ? "stop-circle" : "mic"}
-                      size={22}
-                      color="#ffffff"
-                    />
-                  </Animated.View>
-
-                  <Text style={styles.actionBoxText}>
-                    {isRecordingA
-                      ? t("createCard", "recordingInProgress")
-                      : t("createCard", "startRecording")}
+                  <Text style={{ color: colors.text, marginTop: 5 }}>
+                    {t("createCard", "chooseImage")}
                   </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
 
-                  {isRecordingA && (
-                    <View style={styles.waveContainer}>
-                      <Animated.View
-                        style={[styles.waveBar, { height: waveAnim1 }]}
+          {answerType === "voice" && (
+            <View>
+              {!answerVoiceRecorded ? (
+                <View style={styles.voiceWrapper}>
+                  <TouchableOpacity
+                    style={[
+                      styles.actionBox,
+                      {
+                        backgroundColor: isRecordingA
+                          ? "#ef4444"
+                          : colors.primary,
+                      },
+                    ]}
+                    onPress={() => handleVoiceToggle("answer")}
+                  >
+                    <Animated.View
+                      style={{
+                        transform: [{ scale: isRecordingA ? pulseAnim : 1 }],
+                      }}
+                    >
+                      <Ionicons
+                        name={isRecordingA ? "stop-circle" : "mic"}
+                        size={22}
+                        color="#ffffff"
                       />
-                      <Animated.View
-                        style={[styles.waveBar, { height: waveAnim2 }]}
-                      />
-                      <Animated.View
-                        style={[styles.waveBar, { height: waveAnim3 }]}
-                      />
-                      <Animated.View
-                        style={[styles.waveBar, { height: waveAnim4 }]}
-                      />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View
-                style={[styles.voicePlayerBox, { borderColor: colors.tint }]}
-              >
-                <TouchableOpacity onPress={() => handlePlayVoice("answer")}>
-                  <Ionicons
-                    name={isPlayingA ? "pause-circle" : "play-circle"}
-                    size={32}
-                    color={colors.primary}
-                  />
-                </TouchableOpacity>
-                <Text style={{ color: colors.text, fontWeight: "500" }}>
-                  {isPlayingA
-                    ? t("createCard", "playingAudio")
-                    : t("createCard", "recordingSaved")}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => deleteVoice("answer")}
-                  style={styles.deleteBtn}
+                    </Animated.View>
+
+                    <Text style={styles.actionBoxText}>
+                      {isRecordingA
+                        ? t("createCard", "recordingInProgress")
+                        : t("createCard", "startRecording")}
+                    </Text>
+
+                    {isRecordingA && (
+                      <View style={styles.waveContainer}>
+                        <Animated.View
+                          style={[styles.waveBar, { height: waveAnim1 }]}
+                        />
+                        <Animated.View
+                          style={[styles.waveBar, { height: waveAnim2 }]}
+                        />
+                        <Animated.View
+                          style={[styles.waveBar, { height: waveAnim3 }]}
+                        />
+                        <Animated.View
+                          style={[styles.waveBar, { height: waveAnim4 }]}
+                        />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View
+                  style={[styles.voicePlayerBox, { borderColor: colors.tint }]}
                 >
-                  <Ionicons name="trash-outline" size={20} color="#ef4444" />
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        )}
-      </View>
-
-      {/* --- Reminder Toggle & Interval Choice --- */}
-      <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
-        <View style={styles.rowCard}>
-          <View style={{ flex: 1, marginRight: 10 }}>
-            <Text
-              style={[styles.label, { color: colors.text, marginBottom: 0 }]}
-            >
-              {t("createCard", "needReminder")}
-            </Text>
-            <Text style={{ fontSize: 11, color: colors.tint, marginTop: 2 }}>
-              {t("createCard", "reminderDescription")}
-            </Text>
-          </View>
-          <Switch
-            trackColor={{ false: "#767577", true: colors.primary }}
-            thumbColor={isReminderEnabled ? "#ffffff" : "#f4f3f4"}
-            onValueChange={setIsReminderEnabled}
-            value={isReminderEnabled}
-          />
+                  <TouchableOpacity onPress={() => handlePlayVoice("answer")}>
+                    <Ionicons
+                      name={isPlayingA ? "pause-circle" : "play-circle"}
+                      size={32}
+                      color={colors.primary}
+                    />
+                  </TouchableOpacity>
+                  <Text style={{ color: colors.text, fontWeight: "500" }}>
+                    {isPlayingA
+                      ? t("createCard", "playingAudio")
+                      : t("createCard", "recordingSaved")}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => deleteVoice("answer")}
+                    style={styles.deleteBtn}
+                  >
+                    <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
         </View>
 
-        {/* {isReminderEnabled && (
+        {/* --- Reminder Toggle & Interval Choice --- */}
+        <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
+          <View style={styles.rowCard}>
+            <View style={{ flex: 1, marginRight: 10 }}>
+              <Text
+                style={[styles.label, { color: colors.text, marginBottom: 0 }]}
+              >
+                {t("createCard", "needReminder")}
+              </Text>
+              <Text style={{ fontSize: 11, color: colors.tint, marginTop: 2 }}>
+                {t("createCard", "reminderDescription")}
+              </Text>
+            </View>
+            <Switch
+              trackColor={{ false: "#767577", true: colors.primary }}
+              thumbColor={isReminderEnabled ? "#ffffff" : "#f4f3f4"}
+              onValueChange={setIsReminderEnabled}
+              value={isReminderEnabled}
+            />
+          </View>
+
+          {/* {isReminderEnabled && (
           <View style={{ marginTop: 14 }}>
             <Text style={[styles.label, { color: colors.text }]}>
               මතක් කළ යුතු කාල පරතරය (Reminder Interval):
@@ -5039,59 +5087,62 @@ export default function AddCardScreen() {
             </View>
           </View>
         )} */}
-        {isReminderEnabled && (
-          <View style={{ marginTop: 14 }}>
-            <Text style={[styles.label, { color: colors.text }]}>
-              {t("createCard", "reminderIntervalLabel")}
-            </Text>
-            <View style={styles.intervalContainer}>
-              {[
-                { label: t("cardDetail", "reminderToday"), value: -1 },
-                { label: t("cardDetail", "reminder3Days"), value: 3 },
-                { label: t("cardDetail", "reminder7Days"), value: 7 },
-                { label: t("cardDetail", "reminder14Days"), value: 14 },
-                { label: t("cardDetail", "reminder30Days"), value: 30 },
-              ].map((item) => (
-                <TouchableOpacity
-                  key={item.value}
-                  style={[
-                    styles.intervalButton,
-                    reminderDays === item.value && {
-                      backgroundColor: colors.primary,
-                      borderColor: colors.primary,
-                    },
-                  ]}
-                  onPress={() => setReminderDays(item.value)}
-                >
-                  <Text
+          {isReminderEnabled && (
+            <View style={{ marginTop: 14 }}>
+              <Text style={[styles.label, { color: colors.text }]}>
+                {t("createCard", "reminderIntervalLabel")}
+              </Text>
+              <View style={styles.intervalContainer}>
+                {[
+                  { label: t("cardDetail", "reminderToday"), value: -1 },
+                  { label: t("cardDetail", "reminder3Days"), value: 3 },
+                  { label: t("cardDetail", "reminder7Days"), value: 7 },
+                  { label: t("cardDetail", "reminder14Days"), value: 14 },
+                  { label: t("cardDetail", "reminder30Days"), value: 30 },
+                ].map((item) => (
+                  <TouchableOpacity
+                    key={item.value}
                     style={[
-                      styles.intervalText,
-                      {
-                        color:
-                          reminderDays === item.value ? "#ffffff" : colors.text,
+                      styles.intervalButton,
+                      reminderDays === item.value && {
+                        backgroundColor: colors.primary,
+                        borderColor: colors.primary,
                       },
                     ]}
+                    onPress={() => setReminderDays(item.value)}
                   >
-                    {item.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        styles.intervalText,
+                        {
+                          color:
+                            reminderDays === item.value
+                              ? "#ffffff"
+                              : colors.text,
+                        },
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
-          </View>
-        )}
-      </View>
+          )}
+        </View>
 
-      {/* Save Button */}
-      <TouchableOpacity
-        style={[styles.saveButton, { backgroundColor: colors.primary }]}
-        onPress={handleSaveCard}
-      >
-        <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
-        <Text style={styles.saveButtonText}>
-          {t("createCard", "saveButtonText")}
-        </Text>
-      </TouchableOpacity>
-    </ScrollView>
+        {/* Save Button */}
+        <TouchableOpacity
+          style={[styles.saveButton, { backgroundColor: colors.primary }]}
+          onPress={handleSaveCard}
+        >
+          <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
+          <Text style={styles.saveButtonText}>
+            {t("createCard", "saveButtonText")}
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SwipeableNavigator>
   );
 }
 

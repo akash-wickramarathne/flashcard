@@ -1256,12 +1256,13 @@
 //   modalCloseText: { color: "#fff", fontWeight: "bold", fontSize: 15 },
 // });
 
+import SwipeableNavigator from "@/components/SwipeableNavigator";
 import { useLanguage } from "@/context/LanguageContext";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { useFocusEffect, useRouter } from "expo-router";
-import * as Sharing from "expo-sharing";
 import * as SQLite from "expo-sqlite";
 import JSZip from "jszip";
 import { useCallback, useState } from "react";
@@ -1285,12 +1286,13 @@ export default function ProfileSettingsScreen() {
   const { t, setLocale } = useLanguage();
 
   // User State
-  const [user, setUser] = useState<any>({
-    name: "Suhan Hasan",
-    email: "example@email.com",
-    avatar:
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500",
-  });
+  const [user, setUser] = useState<any>();
+  //   {
+  //   name: "Suhan Hasan",
+  //   email: "example@email.com",
+  //   avatar:
+  //     "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500",
+  // }
 
   // Language Modal State
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
@@ -1331,11 +1333,22 @@ export default function ProfileSettingsScreen() {
     }, []),
   );
 
+  // const fetchUserData = async () => {
+  //   try {
+  //     const result: any = await db.getAllAsync("SELECT * FROM users LIMIT 1;");
+  //     if (result && result.length > 0) {
+  //       setUser(result[0]);
+  //     }
+  //   } catch (error) {
+  //     console.log("Error fetching user profile:", error);
+  //   }
+  // };
   const fetchUserData = async () => {
     try {
-      const result: any = await db.getAllAsync("SELECT * FROM users LIMIT 1;");
-      if (result && result.length > 0) {
-        setUser(result[0]);
+      const jsonValue = await AsyncStorage.getItem("USER_PROFILE");
+      if (jsonValue !== null) {
+        const parsedData = JSON.parse(jsonValue);
+        setUser(parsedData); // ඔබේ state එකට ඩෙටා දමා ගැනීම
       }
     } catch (error) {
       console.log("Error fetching user profile:", error);
@@ -1343,11 +1356,314 @@ export default function ProfileSettingsScreen() {
   };
 
   // --- EXPORT ZIP BACKUP ---
+  // const handleExportZip = async () => {
+  //   try {
+  //     const zip = new JSZip();
+  //     const allRows = await db.getAllAsync("SELECT * FROM flashcards;");
+  //     zip.file("flashcards.json", JSON.stringify(allRows, null, 2));
+
+  //     const mediaFolder = zip.folder("media");
+  //     const docFiles = await FileSystem.readDirectoryAsync(
+  //       FileSystem.documentDirectory!,
+  //     );
+
+  //     for (const file of docFiles) {
+  //       if (
+  //         file !== "FlashcardBackup" &&
+  //         file !== "SQLite" &&
+  //         file !== "Expo" &&
+  //         !file.endsWith(".zip")
+  //       ) {
+  //         const fileUri = `${FileSystem.documentDirectory}${file}`;
+  //         const fileInfo = await FileSystem.getInfoAsync(fileUri);
+
+  //         if (!fileInfo.isDirectory) {
+  //           const fileBase64 = await FileSystem.readAsStringAsync(fileUri, {
+  //             encoding: FileSystem.EncodingType.Base64,
+  //           });
+  //           mediaFolder?.file(file, fileBase64, { base64: true });
+  //         }
+  //       }
+  //     }
+
+  //     const base64Zip = await zip.generateAsync({ type: "base64" });
+  //     const zipUri = `${FileSystem.documentDirectory}flashcards_backup.zip`;
+
+  //     await FileSystem.writeAsStringAsync(zipUri, base64Zip, {
+  //       encoding: FileSystem.EncodingType.Base64,
+  //     });
+
+  //     if (!(await Sharing.isAvailableAsync())) {
+  //       Alert.alert(
+  //         "Doshayak",
+  //         "Me upangaye sharing pahasukama kriyathmaka nowe.",
+  //       );
+  //       return;
+  //     }
+
+  //     await Sharing.shareAsync(zipUri, {
+  //       dialogTitle: "Flashcard Sampurna Backup eka (ZIP)",
+  //       mimeType: "application/zip",
+  //       UTI: "public.zip",
+  //     });
+  //   } catch (error) {
+  //     console.log("Export ZIP error:", error);
+  //     Alert.alert("Doshayak", "Backup eka sadheema asarthakai.");
+  //   }
+  // };
+
+  // // --- IMPORT ZIP BACKUP ---
+  // const handleImportZip = async () => {
+  //   try {
+  //     const result = await DocumentPicker.getDocumentAsync({
+  //       type: ["application/zip", "application/x-zip-compressed", "*/*"],
+  //       copyToCacheDirectory: true,
+  //     });
+
+  //     if (result.canceled) return;
+  //     const selectedFile = result.assets[0];
+
+  //     const response = await fetch(selectedFile.uri);
+  //     const blob = await response.blob();
+
+  //     const base64Data: string = await new Promise((resolve, reject) => {
+  //       const reader = new FileReader();
+  //       reader.onload = () => {
+  //         const resultStr = reader.result as string;
+  //         const base64 = resultStr.includes(",")
+  //           ? resultStr.split(",")[1]
+  //           : resultStr;
+  //         resolve(base64);
+  //       };
+  //       reader.onerror = (error) => reject(error);
+  //       reader.readAsDataURL(blob);
+  //     });
+
+  //     const zip = new JSZip();
+  //     const loadedZip = await zip.loadAsync(base64Data, { base64: true });
+  //     const zipFiles = loadedZip.files;
+
+  //     let jsonFile = loadedZip.file("flashcards.json");
+  //     if (!jsonFile) {
+  //       const jsonKey = Object.keys(zipFiles).find((k) =>
+  //         k.endsWith("flashcards.json"),
+  //       );
+  //       if (jsonKey) jsonFile = loadedZip.file(jsonKey);
+  //     }
+
+  //     if (!jsonFile) {
+  //       Alert.alert(
+  //         "Doshayak",
+  //         "Backup eke 'flashcards.json' gonuwa hamu noweewi.",
+  //       );
+  //       return;
+  //     }
+
+  //     const jsonString = await jsonFile.async("string");
+  //     const parsedData = JSON.parse(jsonString);
+
+  //     for (const relativePath of Object.keys(zipFiles)) {
+  //       if (relativePath.includes("media/") && !zipFiles[relativePath].dir) {
+  //         const fileName = relativePath.split("/").pop();
+  //         if (fileName) {
+  //           const fileData = await zipFiles[relativePath].async("base64");
+  //           const targetUri = `${FileSystem.documentDirectory}${fileName}`;
+  //           await FileSystem.writeAsStringAsync(targetUri, fileData, {
+  //             encoding: FileSystem.EncodingType.Base64,
+  //           });
+  //         }
+  //       }
+  //     }
+
+  //     for (const item of parsedData) {
+  //       let qContent = item.questionContent;
+  //       let aContent = item.answerContent;
+
+  //       if (
+  //         (item.questionType === "voice" || item.questionType === "image") &&
+  //         qContent
+  //       ) {
+  //         const fileName = qContent.split("/").pop();
+  //         if (fileName) qContent = `${FileSystem.documentDirectory}${fileName}`;
+  //       }
+
+  //       if (
+  //         (item.answerType === "voice" || item.answerType === "image") &&
+  //         aContent
+  //       ) {
+  //         const fileName = aContent.split("/").pop();
+  //         if (fileName) aContent = `${FileSystem.documentDirectory}${fileName}`;
+  //       }
+
+  //       await db.runAsync(
+  //         `INSERT OR REPLACE INTO flashcards (id, subject, lesson, questionType, questionContent, answerType, answerContent, reminderEnabled, reminderDays) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+  //         [
+  //           item.id,
+  //           item.subject,
+  //           item.lesson,
+  //           item.questionType,
+  //           qContent,
+  //           item.answerType,
+  //           aContent,
+  //           item.reminderEnabled,
+  //           item.reminderDays,
+  //         ],
+  //       );
+  //     }
+
+  //     Alert.alert(
+  //       "Sarthakai! 📥",
+  //       "Backup eka sarthakawa restore karana ladi!",
+  //     );
+  //   } catch (error: any) {
+  //     console.log("Import error:", error);
+  //     Alert.alert("Doshayak", error?.message || "Restore kireema asarthakai.");
+  //   }
+  // };
+  // --- EXPORT ZIP BACKUP ---
+  // const handleExportZip = async () => {
+  //   try {
+  //     const zip = new JSZip();
+  //     const allRows = await db.getAllAsync("SELECT * FROM flashcards;");
+  //     zip.file("flashcards.json", JSON.stringify(allRows, null, 2));
+
+  //     const mediaFolder = zip.folder("media");
+  //     const docFiles = await FileSystem.readDirectoryAsync(
+  //       FileSystem.documentDirectory!,
+  //     );
+
+  //     for (const file of docFiles) {
+  //       if (
+  //         file !== "FlashcardBackup" &&
+  //         file !== "SQLite" &&
+  //         file !== "Expo" &&
+  //         !file.endsWith(".zip")
+  //       ) {
+  //         const fileUri = `${FileSystem.documentDirectory}${file}`;
+  //         const fileInfo = await FileSystem.getInfoAsync(fileUri);
+
+  //         if (!fileInfo.isDirectory) {
+  //           const fileBase64 = await FileSystem.readAsStringAsync(fileUri, {
+  //             encoding: FileSystem.EncodingType.Base64,
+  //           });
+  //           mediaFolder?.file(file, fileBase64, { base64: true });
+  //         }
+  //       }
+  //     }
+
+  //     const base64Zip = await zip.generateAsync({ type: "base64" });
+  //     const zipUri = `${FileSystem.documentDirectory}flashcards_backup.zip`;
+
+  //     await FileSystem.writeAsStringAsync(zipUri, base64Zip, {
+  //       encoding: FileSystem.EncodingType.Base64,
+  //     });
+
+  //     if (!(await Sharing.isAvailableAsync())) {
+  //       Alert.alert("දෝෂයක්", "මෙම උපකරණයේ sharing පහසුකම ක්‍රියාත්මක නොවේ.");
+  //       return;
+  //     }
+
+  //     // සේ이브 වූ වහාම Share sheet එක ස්වයංක්‍රීයව පෙන්වයි
+  //     await Sharing.shareAsync(zipUri, {
+  //       dialogTitle: "Flashcard සම්පූර්ණ Backup එක (ZIP)",
+  //       mimeType: "application/zip",
+  //       UTI: "public.zip",
+  //     });
+  //   } catch (error) {
+  //     console.log("Export ZIP error:", error);
+  //     Alert.alert("දෝෂයක්", "Backup එක සැකසීම අසාර්ථකයි.");
+  //   }
+  // };
+  // const handleExportZip = async () => {
+  //   try {
+  //     const zip = new JSZip();
+  //     const allRows = await db.getAllAsync("SELECT * FROM flashcards;");
+  //     zip.file("flashcards.json", JSON.stringify(allRows, null, 2));
+
+  //     const mediaFolder = zip.folder("media");
+  //     const docFiles = await FileSystem.readDirectoryAsync(
+  //       FileSystem.documentDirectory!,
+  //     );
+
+  //     for (const file of docFiles) {
+  //       if (
+  //         file !== "FlashcardBackup" &&
+  //         file !== "SQLite" &&
+  //         file !== "Expo" &&
+  //         !file.endsWith(".zip")
+  //       ) {
+  //         const fileUri = `${FileSystem.documentDirectory}${file}`;
+  //         const fileInfo = await FileSystem.getInfoAsync(fileUri);
+
+  //         if (!fileInfo.isDirectory) {
+  //           const fileBase64 = await FileSystem.readAsStringAsync(fileUri, {
+  //             encoding: FileSystem.EncodingType.Base64,
+  //           });
+  //           mediaFolder?.file(file, fileBase64, { base64: true });
+  //         }
+  //       }
+  //     }
+
+  //     const base64Zip = await zip.generateAsync({ type: "base64" });
+
+  //     // ස්වයංක්‍රීයව Timestamp එකක් සහිත ෆයිල් නම සැකසීම
+  //     const now = new Date();
+  //     const timestamp = now.toISOString().replace(/[:T]/g, "-").slice(0, 19);
+  //     const fileName = `flashcards_backup_${timestamp}.zip`;
+
+  //     // 🌟 1. පරිශීලකයාට ෆෝල්ඩරයක් තෝරාගැනීමට සිස්ටම් ඩයලොග් එක පෙන්වීම
+  //     const permissions =
+  //       await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+
+  //     if (permissions.granted) {
+  //       const directoryUri = permissions.directoryUri;
+
+  //       // 🌟 2. තෝරාගත් ෆෝල්ඩරය තුළ අදාළ නමින් ෆයිල් එකක් නිර්මාණය කිරීම
+  //       const createdFileUri =
+  //         await FileSystem.StorageAccessFramework.createFileAsync(
+  //           directoryUri,
+  //           fileName,
+  //           "application/zip",
+  //         );
+
+  //       // 🌟 3. ZIP ඩේටා අදාළ ෆයිල් එකට ලිවීම
+  //       await FileSystem.StorageAccessFramework.writeAsStringAsync(
+  //         createdFileUri,
+  //         base64Zip,
+  //         { encoding: FileSystem.EncodingType.Base64 },
+  //       );
+
+  //       Alert.alert(
+  //         "සාර්ථකයි! 💾",
+  //         "Backup ෆයිල් එක ඔබ තෝරාගත් ස්ථානයේ සාර්ථකව සුරකින ලදී!",
+  //       );
+  //     } else {
+  //       Alert.alert("අවලංගුයි", "ඔබ ෆෝල්ඩරයක් තෝරාගැනීම ප්‍රතික්ෂේප කළා.");
+  //     }
+  //   } catch (error: any) {
+  //     console.log("Export ZIP error:", error);
+  //     Alert.alert("දෝෂයක්", "Backup එක සැකසීම අසාර්ථකයි.");
+  //   }
+  // };
+
+  // --- 1. EXPORT ALL TABLES & MEDIA ---
   const handleExportZip = async () => {
     try {
       const zip = new JSZip();
-      const allRows = await db.getAllAsync("SELECT * FROM flashcards;");
-      zip.file("flashcards.json", JSON.stringify(allRows, null, 2));
+
+      // ටේබල් තුනෙන්ම දත්ත ලබා ගැනීම
+      const subjects = await db.getAllAsync("SELECT * FROM subjects;");
+      const lessons = await db.getAllAsync("SELECT * FROM lessons;");
+      const flashcards = await db.getAllAsync("SELECT * FROM flashcards;");
+
+      const backupData = {
+        subjects,
+        lessons,
+        flashcards,
+      };
+
+      // ටේබල් තුනේම දත්ත එකම JSON එකකට ඇතුළත් කිරීම
+      zip.file("flashcards.json", JSON.stringify(backupData, null, 2));
 
       const mediaFolder = zip.folder("media");
       const docFiles = await FileSystem.readDirectoryAsync(
@@ -1374,32 +1690,40 @@ export default function ProfileSettingsScreen() {
       }
 
       const base64Zip = await zip.generateAsync({ type: "base64" });
-      const zipUri = `${FileSystem.documentDirectory}flashcards_backup.zip`;
 
-      await FileSystem.writeAsStringAsync(zipUri, base64Zip, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
+      const now = new Date();
+      const timestamp = now.toISOString().replace(/[:T]/g, "-").slice(0, 19);
+      const fileName = `flashcards_backup_${timestamp}.zip`;
 
-      if (!(await Sharing.isAvailableAsync())) {
-        Alert.alert(
-          "Doshayak",
-          "Me upangaye sharing pahasukama kriyathmaka nowe.",
+      const permissions =
+        await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+
+      if (permissions.granted) {
+        const directoryUri = permissions.directoryUri;
+        const createdFileUri =
+          await FileSystem.StorageAccessFramework.createFileAsync(
+            directoryUri,
+            fileName,
+            "application/zip",
+          );
+
+        await FileSystem.StorageAccessFramework.writeAsStringAsync(
+          createdFileUri,
+          base64Zip,
+          { encoding: FileSystem.EncodingType.Base64 },
         );
-        return;
-      }
 
-      await Sharing.shareAsync(zipUri, {
-        dialogTitle: "Flashcard Sampurna Backup eka (ZIP)",
-        mimeType: "application/zip",
-        UTI: "public.zip",
-      });
-    } catch (error) {
+        Alert.alert("සාර්ථකයි! 💾", "Backup ෆයිල් එක සාර්ථකව සුරකින ලදී!");
+      } else {
+        Alert.alert("අවලංගුයි", "ඔබ ෆෝල්ඩරයක් තෝරාගැනීම ප්‍රතික්ෂේප කළා.");
+      }
+    } catch (error: any) {
       console.log("Export ZIP error:", error);
-      Alert.alert("Doshayak", "Backup eka sadheema asarthakai.");
+      Alert.alert("දෝෂයක්", "Backup එක සැකසීම අසාර්ථකයි.");
     }
   };
 
-  // --- IMPORT ZIP BACKUP ---
+  // --- 2. IMPORT & RESTORE ALL TABLES ---
   const handleImportZip = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -1410,6 +1734,28 @@ export default function ProfileSettingsScreen() {
       if (result.canceled) return;
       const selectedFile = result.assets[0];
 
+      Alert.alert(
+        "අවවාදයක්! ⚠️",
+        "මෙම බැකප් එක රෙස්ටෝර් කිරීමේදී ඔබගේ දැනට ඇති සියලුම Subjects, Lessons සහ Flashcards දත්ත ඉවත් වී, බැකප් එකේ ඇති දත්ත පමණක් ඇතුළත් වේ. ඔබට දිගටම කරගෙන යාමට අවශ්‍යද?",
+        [
+          { text: "අවලංගු කරන්න", style: "cancel" },
+          {
+            text: "ඔව්, Restore කරන්න",
+            style: "destructive",
+            onPress: async () => {
+              await executeRestore(selectedFile);
+            },
+          },
+        ],
+      );
+    } catch (error: any) {
+      console.log("Import error:", error);
+      Alert.alert("දෝෂයක්", error?.message || "Restore කිරීම අසාර්ථකයි.");
+    }
+  };
+
+  const executeRestore = async (selectedFile: any) => {
+    try {
       const response = await fetch(selectedFile.uri);
       const blob = await response.blob();
 
@@ -1439,16 +1785,19 @@ export default function ProfileSettingsScreen() {
       }
 
       if (!jsonFile) {
-        Alert.alert(
-          "Doshayak",
-          "Backup eke 'flashcards.json' gonuwa hamu noweewi.",
-        );
+        Alert.alert("දෝෂයක්", "Backup එකේ 'flashcards.json' ගොනුව හමුනොවේ.");
         return;
       }
 
       const jsonString = await jsonFile.async("string");
-      const parsedData = JSON.parse(jsonString);
+      const backupData = JSON.parse(jsonString);
 
+      // පරණ දත්ත ඉවත් කිරීම (Foreign Key ගැටලු මඟහරවා ගැනීමට නිවැරදි පිළිවෙළට: Flashcards -> Lessons -> Subjects)
+      await db.runAsync("DELETE FROM flashcards;");
+      await db.runAsync("DELETE FROM lessons;");
+      await db.runAsync("DELETE FROM subjects;");
+
+      // මීඩියා ෆයිල්ස් documentDirectory වෙත සේව් කරගැනීම
       for (const relativePath of Object.keys(zipFiles)) {
         if (relativePath.includes("media/") && !zipFiles[relativePath].dir) {
           const fileName = relativePath.split("/").pop();
@@ -1462,7 +1811,24 @@ export default function ProfileSettingsScreen() {
         }
       }
 
-      for (const item of parsedData) {
+      // 1. Subjects ඇතුළත් කිරීම
+      for (const sub of backupData.subjects || []) {
+        await db.runAsync(`INSERT INTO subjects (id, name) VALUES (?, ?);`, [
+          sub.id,
+          sub.name,
+        ]);
+      }
+
+      // 2. Lessons ඇතුළත් කිරීම
+      for (const les of backupData.lessons || []) {
+        await db.runAsync(
+          `INSERT INTO lessons (id, subject_id, name) VALUES (?, ?, ?);`,
+          [les.id, les.subject_id, les.name],
+        );
+      }
+
+      // 3. Flashcards ඇතුළත් කිරීම
+      for (const item of backupData.flashcards || []) {
         let qContent = item.questionContent;
         let aContent = item.answerContent;
 
@@ -1483,11 +1849,11 @@ export default function ProfileSettingsScreen() {
         }
 
         await db.runAsync(
-          `INSERT OR REPLACE INTO flashcards (id, subject, lesson, questionType, questionContent, answerType, answerContent, reminderEnabled, reminderDays) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+          `INSERT INTO flashcards (id, subject_id, lesson_id, questionType, questionContent, answerType, answerContent, reminderEnabled, reminderDays) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
           [
             item.id,
-            item.subject,
-            item.lesson,
+            item.subject_id,
+            item.lesson_id,
             item.questionType,
             qContent,
             item.answerType,
@@ -1499,173 +1865,424 @@ export default function ProfileSettingsScreen() {
       }
 
       Alert.alert(
-        "Sarthakai! 📥",
-        "Backup eka sarthakawa restore karana ladi!",
+        "සාර්ථකයි! 📥",
+        "Subjects, Lessons සහ Flashcards සියල්ල සාර්ථකව Restore කරන ලදී!",
       );
     } catch (error: any) {
-      console.log("Import error:", error);
-      Alert.alert("Doshayak", error?.message || "Restore kireema asarthakai.");
+      console.log("Restore execution error:", error);
+      Alert.alert("දෝෂයක්", error?.message || "Restore කිරීම අසාර්ථකයි.");
     }
   };
+  // --- IMPORT ZIP BACKUP ---
+  // const handleImportZip = async () => {
+  //   try {
+  //     const result = await DocumentPicker.getDocumentAsync({
+  //       type: ["application/zip", "application/x-zip-compressed", "*/*"],
+  //       copyToCacheDirectory: true,
+  //     });
+
+  //     if (result.canceled) return;
+  //     const selectedFile = result.assets[0];
+
+  //     // 🌟 isn't readable දෝෂය මඟහරවා ගැනීමට fetch සහ FileReader භාවිතය
+  //     const response = await fetch(selectedFile.uri);
+  //     const blob = await response.blob();
+
+  //     const base64Data: string = await new Promise((resolve, reject) => {
+  //       const reader = new FileReader();
+  //       reader.onload = () => {
+  //         const resultStr = reader.result as string;
+  //         const base64 = resultStr.includes(",")
+  //           ? resultStr.split(",")[1]
+  //           : resultStr;
+  //         resolve(base64);
+  //       };
+  //       reader.onerror = (error) => reject(error);
+  //       reader.readAsDataURL(blob);
+  //     });
+
+  //     const zip = new JSZip();
+  //     const loadedZip = await zip.loadAsync(base64Data, { base64: true });
+  //     const zipFiles = loadedZip.files;
+
+  //     let jsonFile = loadedZip.file("flashcards.json");
+  //     if (!jsonFile) {
+  //       const jsonKey = Object.keys(zipFiles).find((k) =>
+  //         k.endsWith("flashcards.json"),
+  //       );
+  //       if (jsonKey) jsonFile = loadedZip.file(jsonKey);
+  //     }
+
+  //     if (!jsonFile) {
+  //       Alert.alert("දෝෂයක්", "Backup එකේ 'flashcards.json' ගොනුව හමුනොවේ.");
+  //       return;
+  //     }
+
+  //     const jsonString = await jsonFile.async("string");
+  //     const parsedData = JSON.parse(jsonString);
+
+  //     for (const relativePath of Object.keys(zipFiles)) {
+  //       if (relativePath.includes("media/") && !zipFiles[relativePath].dir) {
+  //         const fileName = relativePath.split("/").pop();
+  //         if (fileName) {
+  //           const fileData = await zipFiles[relativePath].async("base64");
+  //           const targetUri = `${FileSystem.documentDirectory}${fileName}`;
+  //           await FileSystem.writeAsStringAsync(targetUri, fileData, {
+  //             encoding: FileSystem.EncodingType.Base64,
+  //           });
+  //         }
+  //       }
+  //     }
+
+  //     for (const item of parsedData) {
+  //       let qContent = item.questionContent;
+  //       let aContent = item.answerContent;
+
+  //       if (
+  //         (item.questionType === "voice" || item.questionType === "image") &&
+  //         qContent
+  //       ) {
+  //         const fileName = qContent.split("/").pop();
+  //         if (fileName) qContent = `${FileSystem.documentDirectory}${fileName}`;
+  //       }
+
+  //       if (
+  //         (item.answerType === "voice" || item.answerType === "image") &&
+  //         aContent
+  //       ) {
+  //         const fileName = aContent.split("/").pop();
+  //         if (fileName) aContent = `${FileSystem.documentDirectory}${fileName}`;
+  //       }
+
+  //       await db.runAsync(
+  //         `INSERT OR REPLACE INTO flashcards (id, subject_id, lesson_id, questionType, questionContent, answerType, answerContent, reminderEnabled, reminderDays) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+  //         [
+  //           item.id,
+  //           item.subject_id,
+  //           item.lesson_id,
+  //           item.questionType,
+  //           qContent,
+  //           item.answerType,
+  //           aContent,
+  //           item.reminderEnabled,
+  //           item.reminderDays,
+  //         ],
+  //       );
+  //     }
+
+  //     Alert.alert("සාර්ථකයි! 📥", "Backup එක සාර්ථකව Restore කරන ලදී!");
+  //   } catch (error: any) {
+  //     console.log("Import error:", error);
+  //     Alert.alert("දෝෂයක්", error?.message || "Restore කිරීම අසාර්ථකයි.");
+  //   }
+  // };
+
+  // // --- IMPORT ZIP BACKUP WITH CONFIRMATION & CLEAR DB ---
+  // const handleImportZip = async () => {
+  //   try {
+  //     const result = await DocumentPicker.getDocumentAsync({
+  //       type: ["application/zip", "application/x-zip-compressed", "*/*"],
+  //       copyToCacheDirectory: true,
+  //     });
+
+  //     if (result.canceled) return;
+  //     const selectedFile = result.assets[0];
+
+  //     // 🌟 1. දත්ත මැකී යාම පිළිබඳව පරිශීලකයාට අනතුරු ඇඟවීමේ ඇලට් එක පෙන්වීම
+  //     Alert.alert(
+  //       "අවවාදයක්! ⚠️",
+  //       "මෙම බැකප් එක රෙස්ටෝර් කිරීමේදී ඔබගේ දැනට ඇති සියලුම ෆ්ලෑෂ් කාඩ් දත්ත ඉවත් වී, බැකප් එකේ ඇති දත්ත පමණක් ඇතුළත් වේ. ඔබට දිගටම කරගෙන යාමට අවශ්‍යද?",
+  //       [
+  //         {
+  //           text: "අවලංගු කරන්න",
+  //           style: "cancel",
+  //         },
+  //         {
+  //           text: "ඔව්, දත්ත මකා දමා Restore කරන්න",
+  //           style: "destructive",
+  //           onPress: async () => {
+  //             await executeRestore(selectedFile);
+  //           },
+  //         },
+  //       ],
+  //     );
+  //   } catch (error: any) {
+  //     console.log("Import error:", error);
+  //     Alert.alert("දෝෂයක්", error?.message || "Restore කිරීම අසාර්ථකයි.");
+  //   }
+  // };
+
+  // // 🌟 2. දත්ත මකා දැමීම සහ රෙස්ටෝර් කිරීමේ ප්‍රධාන ක්‍රියාවලිය
+  // const executeRestore = async (selectedFile: any) => {
+  //   try {
+  //     const response = await fetch(selectedFile.uri);
+  //     const blob = await response.blob();
+
+  //     const base64Data: string = await new Promise((resolve, reject) => {
+  //       const reader = new FileReader();
+  //       reader.onload = () => {
+  //         const resultStr = reader.result as string;
+  //         const base64 = resultStr.includes(",")
+  //           ? resultStr.split(",")[1]
+  //           : resultStr;
+  //         resolve(base64);
+  //       };
+  //       reader.onerror = (error) => reject(error);
+  //       reader.readAsDataURL(blob);
+  //     });
+
+  //     const zip = new JSZip();
+  //     const loadedZip = await zip.loadAsync(base64Data, { base64: true });
+  //     const zipFiles = loadedZip.files;
+
+  //     let jsonFile = loadedZip.file("flashcards.json");
+  //     if (!jsonFile) {
+  //       const jsonKey = Object.keys(zipFiles).find((k) =>
+  //         k.endsWith("flashcards.json"),
+  //       );
+  //       if (jsonKey) jsonFile = loadedZip.file(jsonKey);
+  //     }
+
+  //     if (!jsonFile) {
+  //       Alert.alert("දෝෂයක්", "Backup එකේ 'flashcards.json' ගොනුව හමුනොවේ.");
+  //       return;
+  //     }
+
+  //     const jsonString = await jsonFile.async("string");
+  //     const parsedData = JSON.parse(jsonString);
+
+  //     // 🌟 3. නව දත්ත ඇතුළත් කිරීමට පෙර ඩේටාබේස් එකේ පරණ දත්ත සියල්ල සම්පූර්ණයෙන්ම ඉවත් කිරීම
+  //     await db.runAsync("DELETE FROM flashcards;");
+  //     await db.runAsync("DELETE FROM lessons;");
+  //     await db.runAsync("DELETE FROM subjects;");
+
+  //     // 4. මීඩියා ෆයිල්ස් documentDirectory වෙත සේව් කරගැනීම
+  //     for (const relativePath of Object.keys(zipFiles)) {
+  //       if (relativePath.includes("media/") && !zipFiles[relativePath].dir) {
+  //         const fileName = relativePath.split("/").pop();
+  //         if (fileName) {
+  //           const fileData = await zipFiles[relativePath].async("base64");
+  //           const targetUri = `${FileSystem.documentDirectory}${fileName}`;
+  //           await FileSystem.writeAsStringAsync(targetUri, fileData, {
+  //             encoding: FileSystem.EncodingType.Base64,
+  //           });
+  //         }
+  //       }
+  //     }
+
+  //     // 5. බැකප් එකේ ඇති නව දත්ත ඩේටාබේස් එකට ඇතුළත් කිරීම
+  //     for (const item of parsedData) {
+  //       let qContent = item.questionContent;
+  //       let aContent = item.answerContent;
+
+  //       if (
+  //         (item.questionType === "voice" || item.questionType === "image") &&
+  //         qContent
+  //       ) {
+  //         const fileName = qContent.split("/").pop();
+  //         if (fileName) qContent = `${FileSystem.documentDirectory}${fileName}`;
+  //       }
+
+  //       if (
+  //         (item.answerType === "voice" || item.answerType === "image") &&
+  //         aContent
+  //       ) {
+  //         const fileName = aContent.split("/").pop();
+  //         if (fileName) aContent = `${FileSystem.documentDirectory}${fileName}`;
+  //       }
+
+  //       await db.runAsync(
+  //         `INSERT INTO flashcards (id, subject_id, lesson_id, questionType, questionContent, answerType, answerContent, reminderEnabled, reminderDays) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+  //         [
+  //           item.id,
+  //           item.subject_id,
+  //           item.lesson_id,
+  //           item.questionType,
+  //           qContent,
+  //           item.answerType,
+  //           aContent,
+  //           item.reminderEnabled,
+  //           item.reminderDays,
+  //         ],
+  //       );
+  //     }
+
+  //     Alert.alert(
+  //       "සාර්ථකයි! 📥",
+  //       "පරණ දත්ත ඉවත් කර Backup එක සාර්ථකව Restore කරන ලදී!",
+  //     );
+  //   } catch (error: any) {
+  //     console.log("Restore execution error:", error);
+  //     Alert.alert("දෝෂයක්", error?.message || "Restore කිරීම අසාර්ථකයි.");
+  //   }
+  // };
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Profile Header Card */}
-      <View
-        style={[styles.profileCard, { backgroundColor: colors.cardBackground }]}
+    <SwipeableNavigator>
+      <ScrollView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        showsVerticalScrollIndicator={false}
       >
-        <Image
-          source={{
-            uri:
-              user?.avatar ||
-              "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500",
-          }}
-          style={styles.avatar}
-        />
-        <Text style={[styles.profileName, { color: colors.text }]}>
-          {user?.name || "User Name"}
-        </Text>
-        <Text style={[styles.profileEmail, { color: colors.tint }]}>
-          {user?.email || "user@email.com"}
-        </Text>
-
-        {/* Edit Profile Button */}
-        <TouchableOpacity
+        {/* Profile Header Card */}
+        <View
           style={[
-            styles.editProfileBtn,
-            { backgroundColor: colors.primary + "15" },
+            styles.profileCard,
+            { backgroundColor: colors.cardBackground },
           ]}
-          onPress={() => router.push("/edit-profile")}
         >
-          <Ionicons name="create-outline" size={16} color={colors.primary} />
-          <Text style={[styles.editProfileText, { color: colors.primary }]}>
-            {t("settings", "editProfile")}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Management Section */}
-      <Text style={[styles.sectionHeader, { color: colors.text }]}>
-        {t("settings", "management")}
-      </Text>
-
-      <TouchableOpacity
-        style={[styles.menuItem, { backgroundColor: colors.cardBackground }]}
-        onPress={() => router.push("/edit-subjects")}
-      >
-        <View style={styles.menuLeft}>
-          <Ionicons name="book-outline" size={22} color={colors.primary} />
-          <Text style={[styles.menuText, { color: colors.text }]}>
-            {t("settings", "manageSubjects")}
-          </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.tint} />
-      </TouchableOpacity>
-
-      {/* Preferences Section */}
-      <Text style={[styles.sectionHeader, { color: colors.text }]}>
-        {t("settings", "preferences")}
-      </Text>
-
-      {/* Dark Mode Toggle */}
-      <View
-        style={[styles.menuItem, { backgroundColor: colors.cardBackground }]}
-      >
-        <View style={styles.menuLeft}>
-          <Ionicons
-            name={theme === "dark" ? "moon" : "sunny"}
-            size={22}
-            color={colors.primary}
+          <Image
+            source={{
+              uri:
+                user?.avatar ||
+                "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500",
+            }}
+            style={styles.avatar}
           />
-          <Text style={[styles.menuText, { color: colors.text }]}>
-            {t("settings", "darkMode")}
+          <Text style={[styles.profileName, { color: colors.text }]}>
+            {user?.name || "User Name"}
           </Text>
-        </View>
-        <TouchableOpacity
-          style={[
-            styles.toggleBtn,
-            {
-              backgroundColor:
-                theme === "dark" ? colors.primary : colors.tint + "40",
-            },
-          ]}
-          onPress={toggleTheme}
-        >
-          <View
+          <Text style={[styles.profileEmail, { color: colors.tint }]}>
+            {user?.email || "user@email.com"}
+          </Text>
+
+          {/* Edit Profile Button */}
+          <TouchableOpacity
             style={[
-              styles.toggleCircle,
-              theme === "dark" ? styles.toggleOn : styles.toggleOff,
+              styles.editProfileBtn,
+              { backgroundColor: colors.primary + "15" },
             ]}
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Language Selector Bar with Flag */}
-      <TouchableOpacity
-        style={[styles.menuItem, { backgroundColor: colors.cardBackground }]}
-        onPress={() => setLanguageModalVisible(true)}
-      >
-        <View style={styles.menuLeft}>
-          <Ionicons name="language-outline" size={22} color={colors.primary} />
-          <Text style={[styles.menuText, { color: colors.text }]}>
-            {t("settings", "language")}
-          </Text>
+            onPress={() => router.push("/edit-profile")}
+          >
+            <Ionicons name="create-outline" size={16} color={colors.primary} />
+            <Text style={[styles.editProfileText, { color: colors.primary }]}>
+              {t("settings", "editProfile")}
+            </Text>
+          </TouchableOpacity>
         </View>
-        <View style={styles.langRight}>
-          <Text style={[styles.langSelectedText, { color: colors.tint }]}>
-            {selectedLanguage}
-          </Text>
+
+        {/* Management Section */}
+        <Text style={[styles.sectionHeader, { color: colors.text }]}>
+          {t("settings", "management")}
+        </Text>
+
+        <TouchableOpacity
+          style={[styles.menuItem, { backgroundColor: colors.cardBackground }]}
+          onPress={() => router.push("/edit-subjects")}
+        >
+          <View style={styles.menuLeft}>
+            <Ionicons name="book-outline" size={22} color={colors.primary} />
+            <Text style={[styles.menuText, { color: colors.text }]}>
+              {t("settings", "manageSubjects")}
+            </Text>
+          </View>
           <Ionicons name="chevron-forward" size={18} color={colors.tint} />
+        </TouchableOpacity>
+
+        {/* Preferences Section */}
+        <Text style={[styles.sectionHeader, { color: colors.text }]}>
+          {t("settings", "preferences")}
+        </Text>
+
+        {/* Dark Mode Toggle */}
+        <View
+          style={[styles.menuItem, { backgroundColor: colors.cardBackground }]}
+        >
+          <View style={styles.menuLeft}>
+            <Ionicons
+              name={theme === "dark" ? "moon" : "sunny"}
+              size={22}
+              color={colors.primary}
+            />
+            <Text style={[styles.menuText, { color: colors.text }]}>
+              {t("settings", "darkMode")}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[
+              styles.toggleBtn,
+              {
+                backgroundColor:
+                  theme === "dark" ? colors.primary : colors.tint + "40",
+              },
+            ]}
+            onPress={toggleTheme}
+          >
+            <View
+              style={[
+                styles.toggleCircle,
+                theme === "dark" ? styles.toggleOn : styles.toggleOff,
+              ]}
+            />
+          </TouchableOpacity>
         </View>
-      </TouchableOpacity>
 
-      {/* Backup & Data Section */}
-      <Text style={[styles.sectionHeader, { color: colors.text }]}>
-        {t("settings", "backup")}
-      </Text>
+        {/* Language Selector Bar with Flag */}
+        <TouchableOpacity
+          style={[styles.menuItem, { backgroundColor: colors.cardBackground }]}
+          onPress={() => setLanguageModalVisible(true)}
+        >
+          <View style={styles.menuLeft}>
+            <Ionicons
+              name="language-outline"
+              size={22}
+              color={colors.primary}
+            />
+            <Text style={[styles.menuText, { color: colors.text }]}>
+              {t("settings", "language")}
+            </Text>
+          </View>
+          <View style={styles.langRight}>
+            <Text style={[styles.langSelectedText, { color: colors.tint }]}>
+              {selectedLanguage}
+            </Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.tint} />
+          </View>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.menuItem, { backgroundColor: colors.cardBackground }]}
-        onPress={handleExportZip}
-      >
-        <View style={styles.menuLeft}>
-          <Ionicons
-            name="cloud-upload-outline"
-            size={22}
-            color={colors.primary}
-          />
-          <Text style={[styles.menuText, { color: colors.text }]}>
-            {t("settings", "exportData")}
-          </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.tint} />
-      </TouchableOpacity>
+        {/* Backup & Data Section */}
+        <Text style={[styles.sectionHeader, { color: colors.text }]}>
+          {t("settings", "backup")}
+        </Text>
 
-      <TouchableOpacity
-        style={[
-          styles.menuItem,
-          { backgroundColor: colors.cardBackground, marginBottom: 40 },
-        ]}
-        onPress={handleImportZip}
-      >
-        <View style={styles.menuLeft}>
-          <Ionicons
-            name="cloud-download-outline"
-            size={22}
-            color={colors.primary}
-          />
-          <Text style={[styles.menuText, { color: colors.text }]}>
-            {t("settings", "importData")}
-          </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.tint} />
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.menuItem, { backgroundColor: colors.cardBackground }]}
+          onPress={handleExportZip}
+        >
+          <View style={styles.menuLeft}>
+            <Ionicons
+              name="cloud-upload-outline"
+              size={22}
+              color={colors.primary}
+            />
+            <Text style={[styles.menuText, { color: colors.text }]}>
+              {t("settings", "exportData")}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.tint} />
+        </TouchableOpacity>
 
-      {/* Language Modal with Flags */}
-      {/* <Modal
+        <TouchableOpacity
+          style={[
+            styles.menuItem,
+            { backgroundColor: colors.cardBackground, marginBottom: 40 },
+          ]}
+          onPress={handleImportZip}
+        >
+          <View style={styles.menuLeft}>
+            <Ionicons
+              name="cloud-download-outline"
+              size={22}
+              color={colors.primary}
+            />
+            <Text style={[styles.menuText, { color: colors.text }]}>
+              {t("settings", "importData")}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.tint} />
+        </TouchableOpacity>
+
+        {/* Language Modal with Flags */}
+        {/* <Modal
         visible={languageModalVisible}
         transparent={true}
         animationType="slide"
@@ -1721,71 +2338,74 @@ export default function ProfileSettingsScreen() {
           </View>
         </View>
       </Modal> */}
-      <Modal
-        visible={languageModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setLanguageModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View
-            style={[
-              styles.modalContent,
-              { backgroundColor: colors.cardBackground },
-            ]}
-          >
-            <Text style={[styles.modalTitle, { color: colors.text }]}>
-              {t("settings", "selectLanguage")}
-            </Text>
-
-            {/* 1. ලැයිස්තුව ස්ක්‍රෝල් කිරීමට හැකි වන සේ ScrollView එකක් එකතු කරන ලදී */}
-            <ScrollView
-              style={styles.scrollViewStyle}
-              showsVerticalScrollIndicator={false}
-            >
-              {languages.map((lang: any) => (
-                <TouchableOpacity
-                  key={lang.name}
-                  style={styles.langOptionRow}
-                  onPress={() => {
-                    setSelectedLanguage(lang.name);
-                    setLocale(lang.lang); // Update the locale in the context
-                    console.log("Selected Language:", lang.name);
-                    setLanguageModalVisible(false);
-                  }}
-                >
-                  <View style={styles.langOptionLeft}>
-                    <Text style={styles.flagEmoji}>{lang.flag}</Text>
-                    <Text
-                      style={[styles.langOptionText, { color: colors.text }]}
-                    >
-                      {lang.name}
-                    </Text>
-                  </View>
-                  {selectedLanguage === lang.name && (
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={20}
-                      color={colors.primary}
-                    />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <TouchableOpacity
+        <Modal
+          visible={languageModalVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setLanguageModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View
               style={[
-                styles.modalCloseBtn,
-                { backgroundColor: colors.primary },
+                styles.modalContent,
+                { backgroundColor: colors.cardBackground },
               ]}
-              onPress={() => setLanguageModalVisible(false)}
             >
-              <Text style={styles.modalCloseText}>{t("common", "done")}</Text>
-            </TouchableOpacity>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                {t("settings", "selectLanguage")}
+              </Text>
+
+              {/* 1. ලැයිස්තුව ස්ක්‍රෝල් කිරීමට හැකි වන සේ ScrollView එකක් එකතු කරන ලදී */}
+              <ScrollView
+                style={styles.scrollViewStyle}
+                showsVerticalScrollIndicator={false}
+              >
+                {languages.map((lang: any) => (
+                  <TouchableOpacity
+                    key={lang.name}
+                    style={styles.langOptionRow}
+                    onPress={() => {
+                      setSelectedLanguage(lang.name);
+                      setLocale(lang.lang); // Update the locale in the context
+                      console.log("Selected Language:", lang.name);
+                      // setLanguageModalVisible(false);
+                    }}
+                  >
+                    <View style={styles.langOptionLeft}>
+                      <Text style={styles.flagEmoji}>{lang.flag}</Text>
+                      <Text
+                        style={[styles.langOptionText, { color: colors.text }]}
+                      >
+                        {lang.name}
+                      </Text>
+                    </View>
+                    {selectedLanguage === lang.name && (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={20}
+                        color={colors.primary}
+                      />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <TouchableOpacity
+                style={[
+                  styles.modalCloseBtn,
+                  { backgroundColor: colors.primary },
+                ]}
+                onPress={() => {
+                  setLanguageModalVisible(false);
+                }}
+              >
+                <Text style={styles.modalCloseText}>{t("common", "done")}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </Modal>
-    </ScrollView>
+        </Modal>
+      </ScrollView>
+    </SwipeableNavigator>
   );
 }
 

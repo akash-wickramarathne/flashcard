@@ -2589,6 +2589,32 @@ export default function EditCardScreen() {
     return () => subscription.remove();
   }, [aPlayer]);
 
+  useEffect(() => {
+    return () => {
+      try {
+        // QPlayer එක අයින් කිරීම
+        if (qPlayer) {
+          if (typeof qPlayer.release === "function") {
+            qPlayer.release();
+          } else if (typeof qPlayer.pause === "function") {
+            qPlayer.pause();
+          }
+        }
+
+        // APlayer එක අයින් කිරීම
+        if (aPlayer) {
+          if (typeof aPlayer.release === "function") {
+            aPlayer.release();
+          } else if (typeof aPlayer.pause === "function") {
+            aPlayer.pause();
+          }
+        }
+      } catch (error) {
+        console.log("Audio cleanup error:", error);
+      }
+    };
+  }, [qPlayer, aPlayer]);
+
   const loadCardData = async () => {
     try {
       const res: any = await db.getAllAsync(
@@ -2706,11 +2732,82 @@ export default function EditCardScreen() {
     return `${mins < 10 ? "0" : ""}${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
+  // const handleUpdate = async () => {
+  //   if (!subjectId || !lessonId) {
+  //     Alert.alert(
+  //       t("common", "error") || "දෝෂයකි",
+  //       t("editCard", "selectSubjectLesson") || "කරුණාකර විෂය සහ පාඩම තෝරන්න.",
+  //     );
+  //     return;
+  //   }
+
+  //   try {
+  //     let qContent =
+  //       questionType === "text"
+  //         ? questionText
+  //         : questionType === "image"
+  //           ? questionImage || ""
+  //           : questionVoiceUri || "";
+  //     let aContent =
+  //       answerType === "text"
+  //         ? answerText
+  //         : answerType === "image"
+  //           ? answerImage || ""
+  //           : answerVoiceUri || "";
+
+  //     if (
+  //       (questionType === "voice" || questionType === "image") &&
+  //       qContent &&
+  //       !qContent.includes(FileSystem.documentDirectory!)
+  //     ) {
+  //       const filename = qContent.split("/").pop();
+  //       const permanentUri = `${FileSystem.documentDirectory}${filename}`;
+  //       await FileSystem.copyAsync({ from: qContent, to: permanentUri });
+  //       qContent = permanentUri;
+  //     }
+
+  //     if (
+  //       (answerType === "voice" || answerType === "image") &&
+  //       aContent &&
+  //       !aContent.includes(FileSystem.documentDirectory!)
+  //     ) {
+  //       const filename = aContent.split("/").pop();
+  //       const permanentUri = `${FileSystem.documentDirectory}${filename}`;
+  //       await FileSystem.copyAsync({ from: aContent, to: permanentUri });
+  //       aContent = permanentUri;
+  //     }
+
+  //     await db.runAsync(
+  //       `UPDATE flashcards SET subject_id = ?, lesson_id = ?, questionType = ?, questionContent = ?, answerType = ?, answerContent = ? WHERE id = ?;`,
+  //       [
+  //         subjectId,
+  //         lessonId,
+  //         questionType,
+  //         qContent,
+  //         answerType,
+  //         aContent,
+  //         cardId as string,
+  //       ],
+  //     );
+
+  //     Alert.alert(
+  //       t("common", "success") || "සාර්ථකයි! 🎉",
+  //       t("editCard", "updateSuccess") || "කාඩ් එක යාවත්කාලීන කරන ලදී.",
+  //     );
+  //     router.back();
+  //   } catch (error) {
+  //     console.log("Update error:", error);
+  //     Alert.alert(
+  //       t("common", "error") || "දෝෂයකි",
+  //       t("editCard", "updateError") || "යාවත්කාලීන කිරීම අසාර්ථක විය.",
+  //     );
+  //   }
+  // };
   const handleUpdate = async () => {
     if (!subjectId || !lessonId) {
       Alert.alert(
         t("common", "error") || "දෝෂයකි",
-        t("editCard", "selectSubjectLesson") || "කරුණාකර විෂය සහ පාඩම තෝරන්න.",
+        t("createCard", "chooseSubandLesson") || "කරුණාකර විෂය සහ පාඩම තෝරන්න.",
       );
       return;
     }
@@ -2764,17 +2861,11 @@ export default function EditCardScreen() {
         ],
       );
 
-      Alert.alert(
-        t("common", "success") || "සාර්ථකයි! 🎉",
-        t("editCard", "updateSuccess") || "කාඩ් එක යාවත්කාලීන කරන ලදී.",
-      );
+      Alert.alert(t("common", "successful"), t("createCard", "cardUpdated"));
       router.back();
     } catch (error) {
       console.log("Update error:", error);
-      Alert.alert(
-        t("common", "error") || "දෝෂයකි",
-        t("editCard", "updateError") || "යාවත්කාලීන කිරීම අසාර්ථක විය.",
-      );
+      Alert.alert(t("common", "error"), t("createCard", "failedToSave"));
     }
   };
 
@@ -2861,8 +2952,7 @@ export default function EditCardScreen() {
         )}
       </View>
 
-      {/* Question Edit Box */}
-      <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
+      {/* <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
         <Text style={[styles.sectionTitle, { color: colors.primary }]}>
           {t("cardDetail", "questionLabel")}
         </Text>
@@ -2913,7 +3003,7 @@ export default function EditCardScreen() {
               />
             ) : (
               <Text style={{ color: colors.text }}>
-                {t("editCard", "selectImage") || "පින්තූරයක් තෝරන්න"}
+                {t("createCard", "chooseImage")}
               </Text>
             )}
           </TouchableOpacity>
@@ -2939,8 +3029,8 @@ export default function EditCardScreen() {
               />
               <Text style={{ color: "#fff", fontWeight: "bold" }}>
                 {recorderStateQ.isRecording
-                  ? t("editCard", "recording") || "රෙකෝඩ් වෙමින්..."
-                  : t("editCard", "rerecordVoice") || "හඬ යළි පටිගත කරන්න"}
+                  ? t("createCard", "recordingInProgress")
+                  : t("createCard", "startRecording")}
               </Text>
             </TouchableOpacity>
 
@@ -2992,7 +3082,7 @@ export default function EditCardScreen() {
         )}
       </View>
 
-      {/* Answer Edit Box */}
+  
       <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
         <Text style={[styles.sectionTitle, { color: colors.primary }]}>
           {t("cardDetail", "answerLabel")}
@@ -3103,6 +3193,300 @@ export default function EditCardScreen() {
                   style={styles.slider}
                   minimumValue={0}
                   maximumValue={aDuration || 100}
+                  value={aPosition}
+                  onSlidingComplete={async (val) => {
+                    if (aPlayer) await aPlayer.seekTo(val);
+                  }}
+                  minimumTrackTintColor={colors.primary}
+                  maximumTrackTintColor="#ccc"
+                  thumbTintColor={colors.primary}
+                />
+                <View style={styles.timeRow}>
+                  <Text style={{ color: colors.text, fontSize: 10 }}>
+                    {formatTime(aPosition)}
+                  </Text>
+                  <Text style={{ color: colors.text, fontSize: 10 }}>
+                    {formatTime(aDuration)}
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+      </View> */}
+      <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
+        <Text style={[styles.sectionTitle, { color: colors.primary }]}>
+          {t("cardDetail", "questionLabel")}
+        </Text>
+        <View style={styles.typeSelector}>
+          {(["text", "image", "voice"] as const).map((type) => (
+            <TouchableOpacity
+              key={type}
+              style={[
+                styles.typeBtn,
+                questionType === type && { backgroundColor: colors.primary },
+              ]}
+              onPress={() => setQuestionType(type)}
+            >
+              <Text
+                style={{
+                  color: questionType === type ? "#fff" : colors.text,
+                  fontSize: 12,
+                  fontWeight: "bold",
+                }}
+              >
+                {type === "text"
+                  ? "📝 Text"
+                  : type === "image"
+                    ? "🖼️ Image"
+                    : "🎙️ Voice"}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {questionType === "text" && (
+          <TextInput
+            style={[
+              styles.input,
+              { color: colors.text, borderColor: colors.tint },
+            ]}
+            multiline
+            value={questionText}
+            onChangeText={setQuestionText}
+          />
+        )}
+
+        {questionType === "image" && (
+          <TouchableOpacity
+            style={[styles.uploadBox, { borderColor: colors.tint }]}
+            onPress={() => pickImage("question")}
+          >
+            {questionImage ? (
+              <Image
+                source={{ uri: questionImage }}
+                style={{ width: "100%", height: "100%", borderRadius: 8 }}
+              />
+            ) : (
+              // <Text style={{ color: colors.text }}>
+              //   {t("createCard", "chooseImage" )}
+              // </Text>
+              <Text style={{ color: colors.text }}>
+                🖼️ {t("createCard", "chooseImage")}
+              </Text>
+            )}
+          </TouchableOpacity>
+        )}
+
+        {questionType === "voice" && (
+          <View>
+            <TouchableOpacity
+              style={[
+                styles.voiceBtn,
+                {
+                  backgroundColor: recorderStateQ.isRecording
+                    ? "#ef4444"
+                    : colors.primary,
+                },
+              ]}
+              onPress={() => handleVoiceToggle("question")}
+            >
+              <Ionicons
+                name={recorderStateQ.isRecording ? "stop-circle" : "mic"}
+                size={20}
+                color="#fff"
+              />
+              <Text style={{ color: "#fff", fontWeight: "bold" }}>
+                {recorderStateQ.isRecording
+                  ? t("createCard", "recordingInProgress")
+                  : t("createCard", "startRecording")}
+              </Text>
+            </TouchableOpacity>
+
+            {questionVoiceUri && !recorderStateQ.isRecording && (
+              <View style={styles.previewContainer}>
+                <View style={styles.voiceRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.playBtn,
+                      { backgroundColor: colors.primary },
+                    ]}
+                    onPress={() => handlePlayQ(questionVoiceUri)}
+                  >
+                    <Ionicons
+                      name={isQPlaying ? "pause" : "play"}
+                      size={18}
+                      color="#fff"
+                    />
+                  </TouchableOpacity>
+                  <Text style={{ color: colors.text, fontSize: 12 }}>
+                    {t("createCard", "questionVoicePreview")}
+                  </Text>
+                </View>
+
+                <Slider
+                  style={styles.slider}
+                  minimumValue={0}
+                  maximumValue={qDuration || 100}
+                  value={qPosition}
+                  onSlidingComplete={async (val) => {
+                    if (qPlayer) await qPlayer.seekTo(val);
+                  }}
+                  minimumTrackTintColor={colors.primary}
+                  maximumTrackTintColor="#ccc"
+                  thumbTintColor={colors.primary}
+                />
+                <View style={styles.timeRow}>
+                  <Text style={{ color: colors.text, fontSize: 10 }}>
+                    {formatTime(qPosition)}
+                  </Text>
+                  <Text style={{ color: colors.text, fontSize: 10 }}>
+                    {formatTime(qDuration)}
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+      </View>
+
+      {/* Answer Edit Box */}
+      <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
+        <Text style={[styles.sectionTitle, { color: colors.primary }]}>
+          {t("cardDetail", "answerLabel")}
+        </Text>
+        <View style={styles.typeSelector}>
+          {(["text", "image", "voice"] as const).map((type) => (
+            <TouchableOpacity
+              key={type}
+              style={[
+                styles.typeBtn,
+                answerType === type && { backgroundColor: colors.primary },
+              ]}
+              onPress={() => setAnswerType(type)}
+            >
+              <Text
+                style={{
+                  color: answerType === type ? "#fff" : colors.text,
+                  fontSize: 12,
+                  fontWeight: "bold",
+                }}
+              >
+                {type === "text"
+                  ? "📝 Text"
+                  : type === "image"
+                    ? "🖼️ Image"
+                    : "🎙️ Voice"}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {answerType === "text" && (
+          <TextInput
+            style={[
+              styles.input,
+              { color: colors.text, borderColor: colors.tint },
+            ]}
+            multiline
+            value={answerText}
+            onChangeText={setAnswerText}
+          />
+        )}
+
+        {answerType === "image" && (
+          <TouchableOpacity
+            style={[styles.uploadBox, { borderColor: colors.tint }]}
+            onPress={() => pickImage("answer")}
+          >
+            {answerImage ? (
+              <Image
+                source={{ uri: answerImage }}
+                style={{ width: "100%", height: "100%", borderRadius: 8 }}
+              />
+            ) : (
+              <Text style={{ color: colors.text }}>
+                {t("createCard", "chooseImage")}
+              </Text>
+            )}
+          </TouchableOpacity>
+        )}
+
+        {answerType === "voice" && (
+          <View>
+            <TouchableOpacity
+              style={[
+                styles.voiceBtn,
+                {
+                  backgroundColor: recorderStateA.isRecording
+                    ? "#ef4444"
+                    : colors.primary,
+                },
+              ]}
+              onPress={() => handleVoiceToggle("answer")}
+            >
+              <Ionicons
+                name={recorderStateA.isRecording ? "stop-circle" : "mic"}
+                size={20}
+                color="#fff"
+              />
+              {/* <Text style={{ color: "#fff", fontWeight: "bold" }}>
+                {recorderStateA.isRecording
+                  ? t("editCard", "recording")
+                  : t("editCard", "rerecordAnswerVoice") }
+              </Text> */}
+              <Text style={{ color: "#fff", fontWeight: "bold" }}>
+                {recorderStateA.isRecording
+                  ? t("createCard", "recordingInProgress")
+                  : t("createCard", "startRecording")}
+              </Text>
+            </TouchableOpacity>
+
+            {answerVoiceUri && !recorderStateA.isRecording && (
+              <View style={styles.previewContainer}>
+                <View style={styles.voiceRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.playBtn,
+                      { backgroundColor: colors.primary },
+                    ]}
+                    onPress={() => handlePlayA(answerVoiceUri)}
+                  >
+                    <Ionicons
+                      name={isAPlaying ? "pause" : "play"}
+                      size={18}
+                      color="#fff"
+                    />
+                  </TouchableOpacity>
+                  <Text style={{ color: colors.text, fontSize: 12 }}>
+                    {t("createCard", "answerVoicePreview")}
+                  </Text>
+                </View>
+
+                {/* <Slider
+                  style={styles.slider}
+                  minimumValue={0}
+                  maximumValue={aDuration}
+                  value={aPosition}
+                  onSlidingComplete={async (val) => {
+                    if (aPlayer) await aPlayer.seekTo(val);
+                  }}
+                  minimumTrackTintColor={colors.primary}
+                  maximumTrackTintColor="#ccc"
+                  thumbTintColor={colors.primary}
+                />
+                <View style={styles.timeRow}>
+                  <Text style={{ color: colors.text, fontSize: 10 }}>
+                    {formatTime(aPosition)}
+                  </Text>
+                  <Text style={{ color: colors.text, fontSize: 10 }}>
+                    {formatTime(aDuration)}
+                  </Text>
+                </View> */}
+                <Slider
+                  style={styles.slider}
+                  minimumValue={0}
+                  maximumValue={aDuration && aDuration > 0 ? aDuration : 1} // 🌟 මෙතැන වෙනස් කරන්න
                   value={aPosition}
                   onSlidingComplete={async (val) => {
                     if (aPlayer) await aPlayer.seekTo(val);

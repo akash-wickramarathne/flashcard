@@ -1,45 +1,46 @@
 import { useLanguage } from "@/context/LanguageContext";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import * as SQLite from "expo-sqlite";
 import { useEffect, useState } from "react";
 import {
-    Alert,
-    Image,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
-
-const db = SQLite.openDatabaseSync("flashcards.db");
 
 export default function EditProfileScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const { t } = useLanguage(); // Use the translation function
+  const { t } = useLanguage();
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [age, setAge] = useState("");
   const [birthday, setBirthday] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [avatar, setAvatar] = useState("");
+  const [isExistingUser, setIsExistingUser] = useState(false); // 🌟 යූසර් කෙනෙක් 이미 ඉන්නවද නැද්ද බලන්න
 
   useEffect(() => {
     fetchUserData();
   }, []);
 
+  // 🌟 AsyncStorage එකෙන් ඩේටා ලබා ගැනීම
   const fetchUserData = async () => {
     try {
-      const result: any = await db.getAllAsync("SELECT * FROM users LIMIT 1;");
-      if (result && result.length > 0) {
-        const u = result[0];
+      const jsonValue = await AsyncStorage.getItem("USER_PROFILE");
+      if (jsonValue !== null) {
+        const u = JSON.parse(jsonValue);
         setName(u.name || "");
         setEmail(u.email || "");
         setAge(u.age ? u.age.toString() : "");
@@ -50,9 +51,12 @@ export default function EditProfileScreen() {
           u.avatar ||
             "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500",
         );
+        setIsExistingUser(true); // ඩේටා තියෙනවා නම් true කරයි
+      } else {
+        setIsExistingUser(false); // ඩේටා නැත්නම් false කරයි
       }
     } catch (error) {
-      console.log("Error fetching user for edit:", error);
+      console.log("Error fetching user from storage:", error);
     }
   };
 
@@ -63,8 +67,8 @@ export default function EditProfileScreen() {
 
     if (!permissionResult.granted) {
       Alert.alert(
-        "Awasaraya Awashyai",
-        "Profile photo eka mawa ganeema sadaha gallery access awashyai.",
+        t("editProfile", "needPermissionHeader"),
+        t("editProfile", "needPermissionBody"),
       );
       return;
     }
@@ -89,49 +93,61 @@ export default function EditProfileScreen() {
     }
   };
 
-  // Data Save qilish
+  // 🌟 AsyncStorage එකේ Data Save / Create කිරීම
   const handleSaveChanges = async () => {
     try {
       const formattedBirthday = birthday.toISOString().split("T")[0];
-      const existing: any = await db.getAllAsync(
-        "SELECT * FROM users LIMIT 1;",
-      );
+      const userData = {
+        name,
+        email,
+        age,
+        birthday: formattedBirthday,
+        avatar,
+      };
 
-      if (existing && existing.length > 0) {
-        await db.runAsync(
-          `UPDATE users SET name = ?, email = ?, age = ?, birthday = ?, avatar = ? WHERE id = ?;`,
-          [name, email, age, formattedBirthday, avatar, existing[0].id],
+      await AsyncStorage.setItem("USER_PROFILE", JSON.stringify(userData));
+      setIsExistingUser(true);
+
+      // Alert.alert(
+      //   t('common','successful'),
+      //   isExistingUser
+      //     ? t('editProfile','updatedSuccess')
+      //     : t('editProfile','createdSuccess'),
+      //   [{ text: "හොඳයි", onPress: () => router.back() }],
+      // );
+      if (isExistingUser) {
+        // 1. කලින් යූසර් කෙනෙක් ඉඳන් Update කළොත් විතරක් Alert එක පෙන්වීම
+        Alert.alert(
+          t("common", "successful"),
+          t("editProfile", "updatedSuccess"),
+          [{ text: t("common", "ok"), onPress: () => router.back() }],
         );
       } else {
-        await db.runAsync(
-          `INSERT INTO users (name, email, age, birthday, avatar) VALUES (?, ?, ?, ?, ?);`,
-          [name, email, age, formattedBirthday, avatar],
-        );
+        // 2. අලුතින් Account එකක් Create කළොත් Alert එකක් නැතුව කෙලින්ම Home / Index Page එකට යැවීම
+        setIsExistingUser(true);
+        router.replace("/"); // හෝ ඔබේ Index / Home page එකේ route නම දාන්න (උදා: router.replace("/home"))
       }
-
-      Alert.alert(
-        "Sarthakai! ✅",
-        "Profile thorathuru sarthakawa update wuni.",
-        [{ text: "Hondai", onPress: () => router.back() }],
-      );
     } catch (error) {
-      console.log("Error updating profile:", error);
-      Alert.alert("Doshayak!", "Profile data save kireema asarthakawai.");
+      console.log("Error saving profile:", error);
+      Alert.alert(t("common", "error"), t("common", "failed"));
     }
   };
 
   return (
     <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[
+        styles.container,
+        { backgroundColor: colors.background, paddingTop: 40 },
+      ]}
       showsVerticalScrollIndicator={false}
     >
-      {/* Top Navigation */}
+      {/* Top Navigation - 🌟 ඩේටා නැත්නම් Create Account ලෙස පෙන්වීම */}
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.topTitle, { color: colors.text }]}>
-          {t("editProfile", "headerLabel")}
+          {isExistingUser ? t("editProfile", "headerLabel") : "Create Account"}
         </Text>
         <View style={{ width: 24 }} />
       </View>
@@ -243,13 +259,15 @@ export default function EditProfileScreen() {
           />
         )}
 
-        {/* Save Button */}
+        {/* Save / Create Account Button - 🌟 තත්ත්වය අනුව නම වෙනස් වීම */}
         <TouchableOpacity
           style={[styles.saveButton, { backgroundColor: colors.primary }]}
           onPress={handleSaveChanges}
         >
           <Text style={styles.saveButtonText}>
-            {t("editProfile", "saveButton")}
+            {isExistingUser
+              ? t("editProfile", "saveButton")
+              : "Create My Account"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -258,35 +276,40 @@ export default function EditProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, paddingTop: 40 },
+  container: { flex: 1, padding: 16 },
   topBar: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 20,
   },
   backBtn: { padding: 4 },
   topTitle: { fontSize: 18, fontWeight: "bold" },
   avatarSection: {
     alignItems: "center",
-    marginBottom: 25,
+    marginBottom: 20,
     position: "relative",
   },
-  avatar: { width: 110, height: 110, borderRadius: 55 },
+  avatar: { width: 100, height: 100, borderRadius: 50 },
   cameraBadge: {
     position: "absolute",
     bottom: 0,
     right: "35%",
-    padding: 10,
-    borderRadius: 22,
-    elevation: 3,
+    padding: 8,
+    borderRadius: 20,
   },
-  formContainer: { gap: 14, paddingBottom: 40 },
-  inputLabel: { fontSize: 13, fontWeight: "600", marginLeft: 4 },
+  formContainer: { marginBottom: 30 },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 6,
+    marginTop: 12,
+  },
   input: {
-    padding: 14,
-    borderRadius: 14,
     borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 15,
   },
   datePickerInput: {
@@ -295,11 +318,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   saveButton: {
-    marginTop: 20,
-    padding: 16,
-    borderRadius: 16,
+    marginTop: 30,
+    paddingVertical: 14,
+    borderRadius: 10,
     alignItems: "center",
-    elevation: 3,
   },
   saveButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
 });

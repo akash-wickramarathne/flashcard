@@ -3152,12 +3152,18 @@
 
 import { useLanguage } from "@/context/LanguageContext";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Slider from "@react-native-community/slider";
 import { createAudioPlayer } from "expo-audio";
 import * as FileSystem from "expo-file-system";
-import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import {
+  useFocusEffect,
+  useLocalSearchParams,
+  useNavigation,
+  useRouter,
+} from "expo-router";
 import * as SQLite from "expo-sqlite";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Dimensions,
@@ -3217,6 +3223,12 @@ export default function CardDetailScreen() {
   useEffect(() => {
     if (cardId) fetchCardDetails(Number(cardId));
   }, [cardId]);
+  // 🌟 2. useEffect වෙනුවට useFocusEffect පාවිච්චි කිරීම
+  useFocusEffect(
+    useCallback(() => {
+      fetchCardDetails(Number(cardId));
+    }, []),
+  );
 
   useEffect(() => {
     if (!activePlayer) return;
@@ -3236,6 +3248,23 @@ export default function CardDetailScreen() {
     );
     return () => {
       subscription.remove();
+    };
+  }, [activePlayer]);
+
+  useEffect(() => {
+    return () => {
+      try {
+        // QPlayer එක අයින් කිරීම
+        if (activePlayer) {
+          if (typeof activePlayer.release === "function") {
+            activePlayer.release();
+          } else if (typeof activePlayer.pause === "function") {
+            activePlayer.pause();
+          }
+        }
+      } catch (error) {
+        console.log("Audio cleanup error:", error);
+      }
     };
   }, [activePlayer]);
 
@@ -3322,6 +3351,9 @@ export default function CardDetailScreen() {
     const secs = totalSeconds % 60;
     return `${mins < 10 ? "0" : ""}${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
+  useEffect(() => {
+    console.log(duration);
+  }, [duration]);
 
   //   const handleDone = async () => {
   //     try {
@@ -3454,11 +3486,71 @@ export default function CardDetailScreen() {
   //       console.log("Done action error:", err);
   //     }
   //   };
+  // const handleDone = async () => {
+  //   try {
+  //     const reminderEnabled = selectedReminder !== null ? 1 : 0;
+  //     const reminderDays =
+  //       selectedReminder !== null ? String(selectedReminder) : "None";
+
+  //     // 1. තෝරාගත් රීමින්ඩර් අගය (value) අනුව නිවැරදි දිනය ගණනය කිරීම
+  //     let reminderNextDate = null;
+  //     if (selectedReminder !== null) {
+  //       const targetDate = new Date();
+  //       // console.log("Current date:", targetDate.toISOString());
+
+  //       if (selectedReminder === -1) {
+  //         // "අද (Today)" තෝරා ඇත නම්, අද දිනයම ලබා දීම
+  //         reminderNextDate = targetDate.toISOString().split("T")[0];
+  //       } else if (typeof selectedReminder === "number") {
+  //         // දින 3, 7, 14, 30 වැනි අංකයක් නම්, වත්මන් දිනයට එම දින ගණන එකතු කිරීම
+  //         targetDate.setDate(targetDate.getDate() + selectedReminder);
+  //         reminderNextDate = targetDate.toISOString().split("T")[0]; // "YYYY-MM-DD" ආකෘතියට
+  //       }
+  //     }
+
+  //     console.log("Calculated reminderNextDate:", reminderNextDate); // ඩීබග් කර බැලීමට
+
+  //     // 2. ඩේටාබේස් එක update කිරීම
+  //     await db.runAsync(
+  //       `UPDATE flashcards SET reminderEnabled = ?, reminderDays = ?, reminderNextDate = ? WHERE id = ?;`,
+  //       [reminderEnabled, reminderDays, reminderNextDate, card.id],
+  //     );
+
+  //     // 3. ඊළඟ කාඩ්පතට යාම හෝ අවසන් කිරීම
+  //     if (cardIds.length > 0 && currentIndex !== -1) {
+  //       const nextIndex = currentIndex + 1;
+  //       if (nextIndex < cardIds.length) {
+  //         const nextCardId = cardIds[nextIndex];
+  //         router.replace({
+  //           pathname: "/card-detail",
+  //           params: {
+  //             id: nextCardId,
+  //             cardIds: JSON.stringify(cardIds),
+  //             currentIndex: nextIndex,
+  //           },
+  //         });
+  //       } else {
+  //         // Alert.alert(
+  //         //   "සුභ පැතුම්! 🎉",
+  //         //   "මෙම පාඩමේ සියලුම කාඩ්පත් සමාලෝචනය කර අවසන්!",
+  //         //   [{ text: "හොඳයි", onPress: () => router.back() }],
+  //         // );
+  //         router.back();
+  //       }
+  //     } else {
+  //       router.back();
+  //     }
+  //   } catch (err) {
+  //     console.log("Done action error:", err);
+  //   }
+  // };
+
   const handleDone = async () => {
     try {
       const reminderEnabled = selectedReminder !== null ? 1 : 0;
       const reminderDays =
         selectedReminder !== null ? String(selectedReminder) : "None";
+      const now = new Date().toISOString();
 
       // 1. තෝරාගත් රීමින්ඩර් අගය (value) අනුව නිවැරදි දිනය ගණනය කිරීම
       let reminderNextDate = null;
@@ -3466,24 +3558,39 @@ export default function CardDetailScreen() {
         const targetDate = new Date();
 
         if (selectedReminder === -1) {
-          // "අද (Today)" තෝරා ඇත නම්, අද දිනයම ලබා දීම
           reminderNextDate = targetDate.toISOString().split("T")[0];
         } else if (typeof selectedReminder === "number") {
-          // දින 3, 7, 14, 30 වැනි අංකයක් නම්, වත්මන් දිනයට එම දින ගණන එකතු කිරීම
           targetDate.setDate(targetDate.getDate() + selectedReminder);
-          reminderNextDate = targetDate.toISOString().split("T")[0]; // "YYYY-MM-DD" ආකෘතියට
+          reminderNextDate = targetDate.toISOString().split("T")[0];
         }
       }
 
-      console.log("Calculated reminderNextDate:", reminderNextDate); // ඩීබග් කර බැලීමට
-
       // 2. ඩේටාබේස් එක update කිරීම
       await db.runAsync(
-        `UPDATE flashcards SET reminderEnabled = ?, reminderDays = ?, reminderNextDate = ? WHERE id = ?;`,
-        [reminderEnabled, reminderDays, reminderNextDate, card.id],
+        `UPDATE flashcards SET reminderEnabled = ?, reminderDays = ?, reminderNextDate = ?, last_reviewed = ? WHERE id = ?;`,
+        [reminderEnabled, reminderDays, reminderNextDate, now, card.id],
       );
 
-      // 3. ඊළඟ කාඩ්පතට යාම හෝ අවසන් කිරීම
+      // 🌟 3. Streak එක පරීක්ෂා කර Update කිරීම
+      const todayStr = new Date().toISOString().split("T")[0]; // "YYYY-MM-DD"
+      const lastStreakDate = await AsyncStorage.getItem("lastStreakDate");
+
+      if (lastStreakDate !== todayStr) {
+        // අද දිනය සඳහා තවම Streak එක ලබාගෙන නැත
+        const currentStreakRaw = await AsyncStorage.getItem("streakCount");
+        const currentStreak = currentStreakRaw
+          ? parseInt(currentStreakRaw, 10)
+          : 0;
+        const newStreak = currentStreak + 1;
+
+        // අලුත් Streak count එක සහ අද දිනය සේව් කිරීම
+        await AsyncStorage.setItem("streakCount", newStreak.toString());
+        await AsyncStorage.setItem("lastStreakDate", todayStr);
+
+        console.log(`🎉 Streak Updated! New Streak: ${newStreak}`);
+      }
+
+      // 4. ඊළඟ කාඩ්පතට යාම හෝ අවසන් කිරීම
       if (cardIds.length > 0 && currentIndex !== -1) {
         const nextIndex = currentIndex + 1;
         if (nextIndex < cardIds.length) {
@@ -3497,11 +3604,7 @@ export default function CardDetailScreen() {
             },
           });
         } else {
-          Alert.alert(
-            "සුභ පැතුම්! 🎉",
-            "මෙම පාඩමේ සියලුම කාඩ්පත් සමාලෝචනය කර අවසන්!",
-            [{ text: "හොඳයි", onPress: () => router.back() }],
-          );
+          router.back();
         }
       } else {
         router.back();
@@ -3591,12 +3694,25 @@ export default function CardDetailScreen() {
                 maximumTrackTintColor="#ccc"
                 thumbTintColor={colors.primary}
               />
-              <View style={styles.timeRow}>
+              {/* <View style={styles.timeRow}>
                 <Text style={{ color: colors.text, fontSize: 11 }}>
                   {playingTarget === target ? formatTime(position) : "00:00"}
                 </Text>
                 <Text style={{ color: colors.text, fontSize: 11 }}>
                   {playingTarget === target ? formatTime(duration) : "00:00"}
+                </Text>
+              </View> */}
+              <View style={styles.timeRow}>
+                {/* 1. Current Position එක (ප්ලේ වෙද්දී විතරක් වෙනස් වේ, නැත්නම් 00:00 පෙන්වයි) */}
+                <Text style={{ color: colors.text, fontSize: 11 }}>
+                  {playingTarget === target
+                    ? formatTime(position * 1000)
+                    : "00:00"}
+                </Text>
+
+                {/* 2. Total Duration එක (playingTarget එක නැතත්, duration එක තියෙන තාක් සැබෑ කාලය පෙන්වයි) */}
+                <Text style={{ color: colors.text, fontSize: 11 }}>
+                  {duration ? formatTime(duration * 1000) : "00:00"}
                 </Text>
               </View>
             </View>

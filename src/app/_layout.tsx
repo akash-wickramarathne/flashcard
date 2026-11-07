@@ -141,102 +141,264 @@
 //   );
 // }
 
+// import { LanguageProvider } from "@/context/LanguageContext";
+// import { Stack } from "expo-router";
+// import { useEffect, useRef, useState } from "react";
+// import { Animated, StyleSheet, Text, View } from "react-native";
+// import { ThemeProvider, useTheme } from "../context/ThemeContext";
+
+// // Welcome / Splash Screen එක (Theme එකට ගැලපෙන UI එක සමඟ)
+// function WelcomeScreen({ onFinish }: { onFinish: () => void }) {
+//   const { colors } = useTheme(); // Current theme එකේ colors ලබා ගැනීම
+//   const fadeAnim = useRef(new Animated.Value(0)).current;
+//   const scaleAnim = useRef(new Animated.Value(0.9)).current; // පොඩි zoom effect එකක් සඳහා
+
+//   useEffect(() => {
+//     // Fade-in සහ Zoom-in Animation එක
+//     Animated.parallel([
+//       Animated.timing(fadeAnim, {
+//         toValue: 1,
+//         duration: 1000,
+//         useNativeDriver: true,
+//       }),
+//       Animated.spring(scaleAnim, {
+//         toValue: 1,
+//         friction: 4,
+//         useNativeDriver: true,
+//       }),
+//     ]).start(() => {
+//       // තත්පර 1.5ක් තිරයේ පෙන්වා තබා fade-out වීම
+//       setTimeout(() => {
+//         Animated.timing(fadeAnim, {
+//           toValue: 0,
+//           duration: 800,
+//           useNativeDriver: true,
+//         }).start(() => {
+//           onFinish();
+//         });
+//       }, 1500);
+//     });
+//   }, []);
+
+//   return (
+//     <View
+//       style={[styles.welcomeContainer, { backgroundColor: colors.background }]}
+//     >
+//       <Animated.View
+//         style={[
+//           styles.contentContainer,
+//           {
+//             opacity: fadeAnim,
+//             transform: [{ scale: scaleAnim }],
+//             borderColor: colors.border,
+//             backgroundColor: colors.card || colors.background,
+//           },
+//         ]}
+//       >
+//         <Text style={[styles.title, { color: colors.primary }]}>
+//           Flashcard Builder 🚀
+//         </Text>
+//         <Text style={[styles.subtitle, { color: colors.text }]}>
+//           Smart learning, sharper memory...
+//         </Text>
+//       </Animated.View>
+//     </View>
+//   );
+// }
+
+// export default function RootLayout() {
+//   const [showWelcome, setShowWelcome] = useState(true);
+
+//   return (
+//     <ThemeProvider>
+//       <LanguageProvider>
+//         {showWelcome ? (
+//           <WelcomeScreen onFinish={() => setShowWelcome(false)} />
+//         ) : (
+//           <Stack screenOptions={{ headerShown: false }}>
+//             {/* ටැබ්ස් ගෘප් එක */}
+//             <Stack.Screen name="(tabs)" />
+
+//             {/* ටැබ්ස් වලිනුත් ඉස්මතු වී පෙන්විය යුතු ඩීටේල්ස් සහ එඩිට් ස්ක්‍රීන්ස් */}
+//             <Stack.Screen name="card-detail" />
+//             <Stack.Screen name="edit-card" />
+//             <Stack.Screen name="edit-subjects" />
+//             <Stack.Screen name="edit-profile" />
+//           </Stack>
+//         )}
+//       </LanguageProvider>
+//     </ThemeProvider>
+//   );
+// }
+
+// const styles = StyleSheet.create({
+//   welcomeContainer: {
+//     flex: 1,
+//     justifyContent: "center",
+//     alignItems: "center",
+//   },
+//   contentContainer: {
+//     alignItems: "center",
+//     padding: 30,
+//     borderRadius: 24,
+//     borderWidth: 1,
+//     shadowColor: "#000",
+//     shadowOffset: { width: 0, height: 4 },
+//     shadowOpacity: 0.1,
+//     shadowRadius: 10,
+//     elevation: 5,
+//   },
+//   title: {
+//     fontSize: 28,
+//     fontWeight: "bold",
+//     marginBottom: 8,
+//     textAlign: "center",
+//   },
+//   subtitle: {
+//     fontSize: 14,
+//     textAlign: "center",
+//     opacity: 0.8,
+//   },
+// });
+
 import { LanguageProvider } from "@/context/LanguageContext";
 import { Stack } from "expo-router";
-import { useEffect, useRef, useState } from "react";
-import { Animated, StyleSheet, Text, View } from "react-native";
-import { ThemeProvider, useTheme } from "../context/ThemeContext";
+import { useState } from "react";
+import { StyleSheet } from "react-native";
 
-// Welcome / Splash Screen එක (Theme එකට ගැලපෙන UI එක සමඟ)
-function WelcomeScreen({ onFinish }: { onFinish: () => void }) {
-  const { colors } = useTheme(); // Current theme එකේ colors ලබා ගැනීම
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.9)).current; // පොඩි zoom effect එකක් සඳහා
+import { ThemeProvider } from "../context/ThemeContext";
 
-  useEffect(() => {
-    // Fade-in සහ Zoom-in Animation එක
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 4,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      // තත්පර 1.5ක් තිරයේ පෙන්වා තබා fade-out වීම
-      setTimeout(() => {
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 800,
-          useNativeDriver: true,
-        }).start(() => {
-          onFinish();
-        });
-      }, 1500);
-    });
-  }, []);
+// // Welcome Screen
+// function WelcomeScreen({ onFinish }: { onFinish: () => void }) {
+//   const { colors } = useTheme();
 
-  return (
-    <View
-      style={[styles.welcomeContainer, { backgroundColor: colors.background }]}
-    >
-      <Animated.View
-        style={[
-          styles.contentContainer,
-          {
-            opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }],
-            borderColor: colors.border,
-            backgroundColor: colors.card || colors.background,
-          },
-        ]}
-      >
-        <Text style={[styles.title, { color: colors.primary }]}>
-          Flashcard Builder 🚀
-        </Text>
-        <Text style={[styles.subtitle, { color: colors.text }]}>
-          Smart learning, sharper memory...
-        </Text>
-      </Animated.View>
-    </View>
-  );
-}
+//   const fadeAnim = useRef(new Animated.Value(0)).current;
+//   const scaleAnim = useRef(new Animated.Value(0.9)).current;
 
+//   useEffect(() => {
+//     let timer: ReturnType<typeof setTimeout>;
+
+//     Animated.parallel([
+//       Animated.timing(fadeAnim, {
+//         toValue: 1,
+//         duration: 1000,
+//         useNativeDriver: true,
+//       }),
+//       Animated.spring(scaleAnim, {
+//         toValue: 1,
+//         friction: 4,
+//         useNativeDriver: true,
+//       }),
+//     ]).start(({ finished }) => {
+//       if (finished) {
+//         timer = setTimeout(() => {
+//           Animated.timing(fadeAnim, {
+//             toValue: 0,
+//             duration: 800,
+//             useNativeDriver: true,
+//           }).start(({ finished: fadeFinished }) => {
+//             if (fadeFinished) {
+//               onFinish();
+//             }
+//           });
+//         }, 1500);
+//       }
+//     });
+
+//     return () => {
+//       clearTimeout(timer);
+//       fadeAnim.stopAnimation();
+//       scaleAnim.stopAnimation();
+//     };
+//   }, []);
+
+//   return (
+//     <View
+//       style={[styles.welcomeContainer, { backgroundColor: colors.background }]}
+//     >
+//       <Animated.View
+//         style={[
+//           styles.contentContainer,
+//           {
+//             opacity: fadeAnim,
+//             transform: [{ scale: scaleAnim }],
+//             borderColor: colors.border,
+//             backgroundColor: colors.card || colors.background,
+//           },
+//         ]}
+//       >
+//         <Text style={[styles.title, { color: colors.primary }]}>
+//           Flashcard Builder 🚀
+//         </Text>
+
+//         <Text style={[styles.subtitle, { color: colors.text }]}>
+//           Smart learning, sharper memory...
+//         </Text>
+//       </Animated.View>
+//     </View>
+//   );
+// }
+
+// Root Layout
 export default function RootLayout() {
   const [showWelcome, setShowWelcome] = useState(true);
 
   return (
+    // <ThemeProvider>
+    //   <LanguageProvider>
+    //     <View style={styles.rootContainer}>
+    //       {/* Main Expo Router Navigator - Always Mounted */}
+    //       <Stack screenOptions={{ headerShown: false }}>
+    //         <Stack.Screen name="(tabs)" />
+
+    //         <Stack.Screen name="card-detail" />
+    //         <Stack.Screen name="edit-card" />
+    //         <Stack.Screen name="edit-subjects" />
+    //         <Stack.Screen name="edit-profile" />
+    //       </Stack>
+
+    //       {/* Welcome Screen Overlay */}
+    //       {showWelcome && (
+    //         <WelcomeScreen onFinish={() => setShowWelcome(false)} />
+    //       )}
+    //     </View>
+    //   </LanguageProvider>
+    // </ThemeProvider>
     <ThemeProvider>
       <LanguageProvider>
-        {showWelcome ? (
-          <WelcomeScreen onFinish={() => setShowWelcome(false)} />
-        ) : (
+        <>
+          {/* Main Expo Router Navigator */}
           <Stack screenOptions={{ headerShown: false }}>
-            {/* ටැබ්ස් ගෘප් එක */}
             <Stack.Screen name="(tabs)" />
-
-            {/* ටැබ්ස් වලිනුත් ඉස්මතු වී පෙන්විය යුතු ඩීටේල්ස් සහ එඩිට් ස්ක්‍රීන්ස් */}
             <Stack.Screen name="card-detail" />
             <Stack.Screen name="edit-card" />
             <Stack.Screen name="edit-subjects" />
             <Stack.Screen name="edit-profile" />
           </Stack>
-        )}
+
+          {/* Welcome Screen Overlay */}
+          {/* {showWelcome && (
+            <WelcomeScreen onFinish={() => setShowWelcome(false)} />
+          )} */}
+        </>
       </LanguageProvider>
     </ThemeProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  welcomeContainer: {
+  rootContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
   },
+
+  // welcomeContainer: {
+  //   ...StyleSheet.absoluteFillObject,
+  //   justifyContent: "center",
+  //   alignItems: "center",
+  //   zIndex: 999,
+  //   elevation: 999,
+  // },
+
   contentContainer: {
     alignItems: "center",
     padding: 30,
@@ -248,12 +410,14 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 5,
   },
+
   title: {
     fontSize: 28,
     fontWeight: "bold",
     marginBottom: 8,
     textAlign: "center",
   },
+
   subtitle: {
     fontSize: 14,
     textAlign: "center",
